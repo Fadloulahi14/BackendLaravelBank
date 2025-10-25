@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Traits\ApiResponse;
+use App\Config\ValidationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -22,6 +23,13 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     use ApiResponse;
+
+    private ValidationService $validationService;
+
+    public function __construct()
+    {
+        $this->validationService = ValidationService::getInstance();
+    }
 
     /**
      * @OA\Post(
@@ -66,10 +74,14 @@ class AuthController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
-        $request->validate([
-            'login' => 'required|string',
-            'password' => 'required|string',
-        ]);
+        // Validation avec notre système personnalisé
+        $validation = $this->validationService->validateLogin($request->all());
+
+        if (!$validation['isValid']) {
+            return $this->errorResponse('Erreur de validation', 422, [
+                'errors' => $validation['errors']
+            ]);
+        }
 
         $user = User::where('login', $request->login)->first();
 
@@ -125,15 +137,23 @@ class AuthController extends Controller
      */
     public function register(Request $request): JsonResponse
     {
-        $request->validate([
-            'login' => 'required|string|unique:users,login|max:255',
-            'password' => 'required|string|min:8',
-            'nom' => 'required|string|max:255',
-            'nci' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
-            'telephone' => 'required|string|max:20',
-            'adresse' => 'required|string|max:500',
-        ]);
+        // Validation avec notre système personnalisé
+        $validation = $this->validationService->validateRegister($request->all());
+
+        if (!$validation['isValid']) {
+            return $this->errorResponse('Erreur de validation', 422, [
+                'errors' => $validation['errors']
+            ]);
+        }
+
+        // Vérifier l'unicité du login
+        if (User::where('login', $request->login)->exists()) {
+            return $this->errorResponse('Erreur de validation', 422, [
+                'errors' => [
+                    'login' => 'Ce login est déjà utilisé'
+                ]
+            ]);
+        }
 
         $user = User::create([
             'id' => (string) \Illuminate\Support\Str::uuid(),
