@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Traits\ApiResponse;
-use App\Config\ValidationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -23,13 +22,6 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     use ApiResponse;
-
-    private ValidationService $validationService;
-
-    public function __construct()
-    {
-        $this->validationService = ValidationService::getInstance();
-    }
 
     /**
      * @OA\Post(
@@ -74,14 +66,10 @@ class AuthController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
-        // Validation avec notre système personnalisé
-        $validation = $this->validationService->validateLogin($request->all());
-
-        if (!$validation['isValid']) {
-            return $this->errorResponse('Erreur de validation', 422, [
-                'errors' => $validation['errors']
-            ]);
-        }
+        $request->validate([
+            'login' => 'required|string',
+            'password' => 'required|string',
+        ]);
 
         $user = User::where('login', $request->login)->first();
 
@@ -95,7 +83,7 @@ class AuthController extends Controller
             'user' => [
                 'id' => $user->id,
                 'login' => $user->login,
-                'type' => $user->type,
+                'type' => $user->role,
             ],
             'token' => $token,
         ], 'Connexion réussie');

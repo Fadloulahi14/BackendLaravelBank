@@ -118,18 +118,36 @@ GET /api/v1/comptes?page=1&limit=10&type=epargne&statut=actif&sort=dateCreation&
 
 #### POST `/api/v1/comptes` - Créer un compte
 
-Crée un nouveau compte bancaire.
+Crée un nouveau compte bancaire avec les informations du client.
+
+**En-têtes de requête :**
+- `Authorization: Bearer {token}`
+- `Accept: application/json`
+- `Content-Type: application/json`
 
 **Corps de la requête :**
 ```json
 {
-  "user_id": "550e8400-e29b-41d4-a716-446655440000",
-  "type": "epargne",
-  "solde": 0,
+  "type": "cheque",
+  "soldeInitial": 500000,
   "devise": "FCFA",
-  "statut": "actif"
+  "solde": 10000,
+  "client": {
+    "titulaire": "Fadil dev",
+    "nci": "",
+    "email": "fadilddev@example.com",
+    "telephone": "+221771234567",
+    "adresse": "Dakar, Sénégal"
+  }
 }
 ```
+
+**Règles de validation :**
+- Tous les champs sont obligatoires
+- Téléphone est unique et respecte les critères d'un téléphone portable Sénégalais
+- Solde à la création est supérieur ou égal à 10000
+- L'email est unique
+- Le numéro de téléphone est unique et respecte les règles d'un NCI Sénégalais
 
 **Réponse 201 :**
 ```json
@@ -137,17 +155,32 @@ Crée un nouveau compte bancaire.
   "success": true,
   "message": "Compte créé avec succès",
   "data": {
-    "id": "550e8400-e29b-41d4-a716-446655440001",
-    "numeroCompte": "C78901234",
-    "titulaire": "Amadou Diallo",
-    "type": "epargne",
-    "solde": 0,
+    "id": "660f9511-f30c-52e5-b827-557766551111",
+    "numeroCompte": "C00123460",
+    "titulaire": "fadild dev",
+    "type": "cheque",
+    "solde": 500000,
     "devise": "FCFA",
-    "dateCreation": "2023-10-22T10:00:00Z",
+    "dateCreation": "2025-10-19T10:30:00Z",
     "statut": "actif",
-    "metadonnees": {
-      "derniereModification": "2023-10-22T10:00:00Z",
+    "metadata": {
+      "derniereModification": "2025-10-19T10:30:00Z",
       "version": 1
+    }
+  }
+}
+```
+
+**Réponse 400 (Bad Request) :**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Les données fournies sont invalides",
+    "details": {
+      "titulaire": "Le nom du titulaire est requis",
+      "soldeInitial": "Le solde initial doit être supérieur à 0"
     }
   }
 }

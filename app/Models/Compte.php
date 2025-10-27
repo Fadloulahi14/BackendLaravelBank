@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class Compte extends Model
@@ -46,7 +47,7 @@ class Compte extends Model
         return $this->belongsTo(User::class);
     }
 
-    private static function generateNumeroCompte(): string
+    public static function generateNumeroCompte(): string
     {
         do {
             $numero = 'C' . strtoupper(Str::random(10));
@@ -123,5 +124,24 @@ class Compte extends Model
     public function scopeUtilisateur($query, $userId)
     {
         return $query->where('user_id', $userId);
+    }
+
+    /**
+     * Relation avec les transactions
+     */
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * Calculer le solde dynamiquement
+     */
+    public function getSoldeAttribute(): float
+    {
+        return $this->transactions()
+            ->validees()
+            ->get()
+            ->sum('impact_solde');
     }
 }

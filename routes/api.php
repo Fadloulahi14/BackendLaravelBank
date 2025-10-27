@@ -17,23 +17,25 @@ use App\Http\Controllers\Api\V1\UserController;
 */
 
 // API Version 1
-Route::prefix('v1')->middleware(['auth:api', 'api.rating'])->group(function () {
-
-    // Routes des comptes bancaires
-    Route::apiResource('comptes', CompteController::class);
-
-    // Routes des utilisateurs
-    Route::apiResource('users', UserController::class);
-});
-
-// Routes d'authentification Passport
 Route::prefix('v1')->group(function () {
+    // Routes d'authentification Passport
     Route::post('login', [App\Http\Controllers\Api\V1\AuthController::class, 'login']);
     Route::post('register', [App\Http\Controllers\Api\V1\AuthController::class, 'register']);
     Route::middleware('auth:api')->post('logout', [App\Http\Controllers\Api\V1\AuthController::class, 'logout']);
+
+    // Routes protégées par authentification
+    Route::middleware(['auth:api', 'api.rating'])->group(function () {
+        // Routes des comptes bancaires
+        Route::apiResource('comptes', CompteController::class);
+        Route::post('comptes/{compte}/bloquer', [CompteController::class, 'bloquer']);
+        Route::post('comptes/{compte}/debloquer', [CompteController::class, 'debloquer']);
+
+        // Routes des utilisateurs
+        Route::apiResource('users', UserController::class);
+    });
 });
 
 // Route par défaut de Laravel (peut être supprimée si non nécessaire)
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
+// Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+//     return $request->user();
+// });
