@@ -78,7 +78,13 @@ class AuthController extends Controller
                 return $this->errorResponse('Identifiants invalides', 401);
             }
 
-            $token = $user->createToken('API Token')->accessToken;
+            // Vérifier la connexion à la base de données avant de créer le token
+            try {
+                $token = $user->createToken('API Token')->accessToken;
+            } catch (\Exception $tokenException) {
+                \Log::error('Token creation error: ' . $tokenException->getMessage());
+                return $this->errorResponse('Erreur lors de la génération du token', 500);
+            }
 
             return $this->successResponse([
                 'user' => [
@@ -90,6 +96,7 @@ class AuthController extends Controller
             ], 'Connexion réussie');
         } catch (\Exception $e) {
             \Log::error('Login error: ' . $e->getMessage());
+            \Log::error('Login error trace: ' . $e->getTraceAsString());
             return $this->errorResponse('Erreur serveur lors de la connexion', 500);
         }
     }
