@@ -29,6 +29,11 @@ use Illuminate\Support\Str;
  *     description="Serveur de développement"
  * )
  *
+ * @OA\Server(
+ *     url="https://backendlaravelbank.onrender.com/api/v1",
+ *     description="Serveur de production"
+ * )
+ *
  * @OA\Schema(
  *     schema="ApiResponse",
  *     @OA\Property(property="success", type="boolean"),

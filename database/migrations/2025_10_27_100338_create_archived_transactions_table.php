@@ -11,20 +11,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('transactions', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->foreignUuid('compte_id')->constrained('comptes')->onDelete('cascade');
-            $table->enum('type', ['depot', 'retrait', 'virement', 'frais']);
+        Schema::create('archived_transactions', function (Blueprint $table) {
+            $table->id();
+            $table->uuid('original_id');
+            $table->uuid('compte_id');
+            $table->enum('type', ['depot', 'retrait', 'virement']);
             $table->decimal('montant', 15, 2);
             $table->string('devise', 3)->default('FCFA');
             $table->text('description')->nullable();
             $table->string('statut', 20)->default('en_attente');
-            $table->string('statut', 20)->change();
-            $table->timestamp('date_transaction')->useCurrent();
+            $table->timestamp('date_transaction');
+            $table->timestamp('archived_at');
             $table->timestamps();
 
-            $table->index(['compte_id', 'type', 'statut']);
-            $table->index(['date_transaction']);
+            $table->index(['compte_id', 'date_transaction']);
+            $table->index('archived_at');
         });
     }
 
@@ -33,6 +34,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('transactions');
+        Schema::dropIfExists('archived_transactions');
     }
 };
