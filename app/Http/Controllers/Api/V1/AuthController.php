@@ -83,6 +83,7 @@ class AuthController extends Controller
                 $token = $user->createToken('API Token')->accessToken;
             } catch (\Exception $tokenException) {
                 \Log::error('Token creation error: ' . $tokenException->getMessage());
+                \Log::error('Token creation error trace: ' . $tokenException->getTraceAsString());
                 return $this->errorResponse('Erreur lors de la génération du token', 500);
             }
 

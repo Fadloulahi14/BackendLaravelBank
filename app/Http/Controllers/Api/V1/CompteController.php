@@ -25,14 +25,14 @@ use Illuminate\Support\Str;
  * )
  *
  * @OA\Server(
+ *     url="https://backendlaravelbank.onrender.com/api/v1",
+ *     description="Serveur de production"
+ * )
+ * @OA\Server(
  *     url="http://localhost:8000/api/v1",
  *     description="Serveur de développement"
  * )
  *
- * @OA\Server(
- *     url="https://backendlaravelbank.onrender.com/api/v1",
- *     description="Serveur de production"
- * )
  *
  * @OA\Schema(
  *     schema="ApiResponse",
