@@ -706,6 +706,9 @@ class CompteController extends Controller
             ])
         ]);
 
+        // Programmer l'archivage automatique après expiration du blocage
+        \App\Jobs\ArchiveExpiredBlockedAccounts::dispatch()->delay($dateFinBlocage);
+
         return $this->successResponse(new CompteResource($compte), 'Compte bloqué avec succès');
     }
 

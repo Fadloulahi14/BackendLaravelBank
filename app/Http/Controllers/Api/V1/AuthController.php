@@ -66,27 +66,32 @@ class AuthController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
-        $request->validate([
-            'login' => 'required|string',
-            'password' => 'required|string',
-        ]);
+        try {
+            $request->validate([
+                'login' => 'required|string',
+                'password' => 'required|string',
+            ]);
 
-        $user = User::where('login', $request->login)->first();
+            $user = User::where('login', $request->login)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return $this->errorResponse('Identifiants invalides', 401);
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                return $this->errorResponse('Identifiants invalides', 401);
+            }
+
+            $token = $user->createToken('API Token')->accessToken;
+
+            return $this->successResponse([
+                'user' => [
+                    'id' => $user->id,
+                    'login' => $user->login,
+                    'type' => $user->type,
+                ],
+                'token' => $token,
+            ], 'Connexion réussie');
+        } catch (\Exception $e) {
+            \Log::error('Login error: ' . $e->getMessage());
+            return $this->errorResponse('Erreur serveur lors de la connexion', 500);
         }
-
-        $token = $user->createToken('API Token')->accessToken;
-
-        return $this->successResponse([
-            'user' => [
-                'id' => $user->id,
-                'login' => $user->login,
-                'type' => $user->type,
-            ],
-            'token' => $token,
-        ], 'Connexion réussie');
     }
 
     /**
