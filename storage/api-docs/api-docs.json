@@ -36,11 +36,11 @@
                                 "properties": {
                                     "login": {
                                         "description": "Login de l'utilisateur",
-                                        "type": "string"
+                                        "type": "admin"
                                     },
                                     "password": {
                                         "description": "Mot de passe",
-                                        "type": "string",
+                                        "type": "admin123",
                                         "format": "password"
                                     }
                                 },
@@ -456,9 +456,9 @@
                                     "devise": {
                                         "description": "Devise du compte",
                                         "type": "string",
-                                        "default": "FCFA",
-                                        "maxLength": 3,
-                                        "example": "FCFA"
+                                        "default": "CFA",
+                                        "maxLength": 4,
+                                        "example": "CFA"
                                     },
                                     "solde": {
                                         "description": "Solde actuel du compte",
@@ -494,7 +494,7 @@
                                             "nci": {
                                                 "description": "Numéro de CNI sénégalais",
                                                 "type": "string",
-                                                "example": ""
+                                                "example": "1950199900856"
                                             },
                                             "email": {
                                                 "description": "Adresse e-mail unique",
