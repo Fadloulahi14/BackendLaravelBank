@@ -14,8 +14,8 @@ class TelephoneSenegalaisRule implements ValidationRule
 
         if (strpos($cleanNumber, '+') === 0) {
             $digitsOnly = substr($cleanNumber, 1);
-            if (!preg_match('/^\d{9}$/', $digitsOnly)) {
-                $fail('Le numéro de téléphone international doit contenir exactement 9 chiffres après +221.');
+            if (!preg_match('/^\d{12}$/', $digitsOnly)) {
+                $fail('Le numéro de téléphone international doit contenir exactement 12 chiffres après +.');
                 return;
             }
 

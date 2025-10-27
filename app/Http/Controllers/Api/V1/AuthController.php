@@ -83,7 +83,7 @@ class AuthController extends Controller
             'user' => [
                 'id' => $user->id,
                 'login' => $user->login,
-                'type' => $user->role,
+                'type' => $user->type,
             ],
             'token' => $token,
         ], 'Connexion réussie');

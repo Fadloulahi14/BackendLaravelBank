@@ -95,6 +95,7 @@ class CompteController extends Controller
      *     description="Récupère une liste paginée de comptes avec possibilité de filtrage et tri",
      *     operationId="getComptes",
      *     tags={"Comptes"},
+     *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(
      *         name="page",
      *         in="query",
@@ -157,6 +158,14 @@ class CompteController extends Controller
      *                 @OA\Property(property="first", type="string"),
      *                 @OA\Property(property="last", type="string")
      *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Authentification requise",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Authentification requise")
      *         )
      *     )
      * )
@@ -402,6 +411,7 @@ class CompteController extends Controller
      *     description="Récupère les détails d'un compte spécifique",
      *     operationId="getCompte",
      *     tags={"Comptes"},
+     *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
@@ -415,6 +425,14 @@ class CompteController extends Controller
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", ref="#/components/schemas/Compte")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Authentification requise",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Authentification requise")
      *         )
      *     ),
      *     @OA\Response(
@@ -449,6 +467,7 @@ class CompteController extends Controller
      *     description="Met à jour partiellement un compte existant",
      *     operationId="updateCompte",
      *     tags={"Comptes"},
+     *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
@@ -470,6 +489,14 @@ class CompteController extends Controller
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Compte mis à jour avec succès"),
      *             @OA\Property(property="data", ref="#/components/schemas/Compte")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Authentification requise",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Authentification requise")
      *         )
      *     ),
      *     @OA\Response(
@@ -547,6 +574,7 @@ class CompteController extends Controller
      *     description="Supprime un compte existant",
      *     operationId="deleteCompte",
      *     tags={"Comptes"},
+     *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
@@ -560,6 +588,14 @@ class CompteController extends Controller
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Compte supprimé avec succès")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Authentification requise",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Authentification requise")
      *         )
      *     ),
      *     @OA\Response(
