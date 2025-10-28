@@ -181,12 +181,15 @@ class CompteController extends Controller
 
         $query = Compte::with('user')->nonSupprime();
 
+        // Exclure les comptes fermés ou bloqués de la liste générale
+        $query->whereNotIn('statut', ['ferme', 'bloque']);
+
         // Autorisation basée sur le rôle
         if ($user->role === 'client') {
             // Client ne voit que ses propres comptes
             $query->utilisateur($user->id);
         }
-        // Admin voit tous les comptes (pas de restriction supplémentaire)
+        // Admin voit tous les comptes actifs (pas de restriction supplémentaire)
 
         // Appliquer les scopes de filtrage
         if ($request->has('type') && $request->type) {
@@ -391,7 +394,7 @@ class CompteController extends Controller
                 ]);
             }
 
-            // Déclencher l'événement pour les notifications
+            
             if ($motDePasseGenere && $codeActivation) {
                 event(new CompteCreeEvent($compte, $user, $motDePasseGenere, $codeActivation));
             }
@@ -403,7 +406,6 @@ class CompteController extends Controller
             );
         });
     }
-
     /**
      * @OA\Get(
      *     path="/comptes/{id}",
@@ -451,7 +453,7 @@ class CompteController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $compte = Compte::with('user')->find($id);
+        $compte = Compte::with('user')->withTrashed()->find($id);
 
         if (!$compte) {
             throw new CompteNotFoundException($id);
@@ -519,6 +521,16 @@ class CompteController extends Controller
         }
 
         $validated = $request->validated();
+
+        // Vérifier les règles métier pour le statut
+        if (isset($validated['statut'])) {
+            if ($validated['statut'] === 'bloque' && $compte->type === 'cheque') {
+                return $this->errorResponse('Un compte chèque ne peut pas être bloqué, seulement fermé', 400);
+            }
+            if ($validated['statut'] === 'bloque' && $compte->type !== 'epargne') {
+                return $this->errorResponse('Seuls les comptes épargne peuvent être bloqués', 400);
+            }
+        }
 
         // Mettre à jour les informations du compte
         $compteData = array_intersect_key($validated, array_flip(['titulaire', 'type', 'solde', 'devise', 'statut']));
@@ -684,6 +696,11 @@ class CompteController extends Controller
 
         if ($compte->type !== 'epargne') {
             return $this->errorResponse('Seuls les comptes épargne peuvent être bloqués', 400);
+        }
+
+        // Vérifier que ce n'est pas un compte chèque (bien que la vérification précédente couvre cela)
+        if ($compte->type === 'cheque') {
+            return $this->errorResponse('Un compte chèque ne peut pas être bloqué, seulement fermé', 400);
         }
 
         // Calculer la date de fin de blocage

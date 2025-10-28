@@ -47,6 +47,11 @@ class UpdateCompteRequest extends FormRequest
 
         if ($this->has('statut')) {
             $rules['statut'] = 'in:actif,bloque,ferme';
+            // Validation personnalisée pour le statut selon le type de compte
+            $compte = $this->route('compte');
+            if ($compte && $this->input('statut') === 'bloque' && $compte->type === 'cheque') {
+                $rules['statut'] .= '|prohibited'; // Empêcher le blocage des comptes chèque
+            }
         }
 
         // Règles pour les informations client
@@ -101,6 +106,7 @@ class UpdateCompteRequest extends FormRequest
             'informationsClient.email.email' => 'L\'adresse e-mail doit être valide.',
             'informationsClient.password.min' => 'Le mot de passe doit contenir au moins 8 caractères.',
             'informationsClient.nci.unique' => 'Ce numéro de CNI est déjà utilisé.',
+            'statut.prohibited' => 'Un compte chèque ne peut pas être bloqué, seulement fermé.',
         ];
     }
 }
