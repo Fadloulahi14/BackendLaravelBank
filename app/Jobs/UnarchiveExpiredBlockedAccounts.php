@@ -31,39 +31,36 @@ class UnarchiveExpiredBlockedAccounts implements ShouldQueue
     {
         Log::info('Starting UnarchiveExpiredBlockedAccounts job');
 
-        // Trouver tous les comptes bloqués dans Neon dont la date de fin de blocage est échue
-        $expiredBlockedAccounts = DB::connection('neon')
-            ->table('archived_comptes')
-            ->where('statut', 'bloque')
-            ->whereRaw("metadonnees->>'dateDeblocagePrevue' <= ?", [now()->toISOString()])
-            ->whereNotNull('metadonnees->dateDeblocagePrevue')
+        // Pour l'instant, on commente la logique d'archivage/désarchivage vers Neon
+        // et on se concentre uniquement sur le déblocage automatique des comptes
+
+        // Trouver tous les comptes bloqués dont la date de fin de blocage est échue
+        $expiredBlockedAccounts = Compte::where('statut', 'bloque')
+            ->where(function ($query) {
+                $query->where('metadonnees->dateFinBlocage', '<=', now())
+                      ->whereNotNull('metadonnees->dateFinBlocage');
+            })
             ->get();
 
-        Log::info("Found {$expiredBlockedAccounts->count()} expired blocked accounts in Neon to unarchive");
+        Log::info("Found {$expiredBlockedAccounts->count()} expired blocked accounts to unblock");
 
-        foreach ($expiredBlockedAccounts as $archivedCompte) {
-            DB::transaction(function () use ($archivedCompte) {
+        foreach ($expiredBlockedAccounts as $compte) {
+            DB::transaction(function () use ($compte) {
                 try {
-                    // Restaurer le compte depuis Neon vers la base locale
-                    $this->unarchiveFromNeon($archivedCompte);
+                    // Mettre à jour le compte pour le débloquer automatiquement
+                    $compte->update([
+                        'statut' => 'actif',
+                        'metadonnees' => array_merge($compte->metadonnees ?? [], [
+                            'dateDeblocageAutomatique' => now(),
+                            'motifDeblocageAutomatique' => 'Période de blocage expirée',
+                            'derniereModification' => now(),
+                            'version' => ($compte->metadonnees['version'] ?? 1) + 1
+                        ])
+                    ]);
 
-                    // Restaurer toutes les transactions du compte
-                    $archivedTransactions = DB::connection('neon')
-                        ->table('archived_transactions')
-                        ->where('compte_id', $archivedCompte->original_id)
-                        ->get();
-
-                    foreach ($archivedTransactions as $archivedTransaction) {
-                        $this->unarchiveTransactionFromNeon($archivedTransaction);
-                    }
-
-                    // Supprimer de la base d'archivage
-                    DB::connection('neon')->table('archived_comptes')->where('id', $archivedCompte->id)->delete();
-                    DB::connection('neon')->table('archived_transactions')->where('compte_id', $archivedCompte->original_id)->delete();
-
-                    Log::info("Unarchived account {$archivedCompte->numero_compte} and its transactions");
+                    Log::info("Automatically unblocked account {$compte->numero_compte}");
                 } catch (\Exception $e) {
-                    Log::error("Failed to unarchive account {$archivedCompte->numero_compte}: " . $e->getMessage());
+                    Log::error("Failed to unblock account {$compte->numero_compte}: " . $e->getMessage());
                     throw $e;
                 }
             });

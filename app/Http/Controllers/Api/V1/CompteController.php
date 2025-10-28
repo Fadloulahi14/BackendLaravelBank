@@ -63,7 +63,12 @@ use Illuminate\Support\Str;
  *     @OA\Property(property="statut", type="string", enum={"actif", "bloque", "ferme"}),
  *     @OA\Property(property="metadonnees", type="object",
  *         @OA\Property(property="derniereModification", type="string", format="date-time"),
- *         @OA\Property(property="version", type="integer", example=1)
+ *         @OA\Property(property="version", type="integer", example=1),
+ *         @OA\Property(property="dateDebutBlocage", type="string", format="date-time", description="Date de début du blocage"),
+ *         @OA\Property(property="dateFinBlocage", type="string", format="date-time", description="Date de fin du blocage"),
+ *         @OA\Property(property="motifBlocage", type="string", description="Motif du blocage"),
+ *         @OA\Property(property="dureeBlocage", type="integer", description="Durée du blocage"),
+ *         @OA\Property(property="uniteBlocage", type="string", enum={"jours", "mois"}, description="Unité de durée du blocage")
  *     )
  * )
  */
@@ -658,10 +663,17 @@ class CompteController extends Controller
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"motif", "duree", "unite"},
-     *             @OA\Property(property="motif", type="string", description="Motif du blocage"),
-     *             @OA\Property(property="duree", type="integer", description="Durée du blocage"),
-     *             @OA\Property(property="unite", type="string", enum={"jours", "mois"}, description="Unité de durée")
+     *             required={"motif", "duree", "unite", "dateDebut"},
+     *             @OA\Property(property="motif", type="string", description="Motif du blocage", example="Suspicion de fraude"),
+     *             @OA\Property(property="duree", type="integer", description="Durée du blocage", example=30),
+     *             @OA\Property(property="unite", type="string", enum={"jours", "mois"}, description="Unité de durée", example="jours"),
+     *             @OA\Property(property="dateDebut", type="string", format="date-time", description="Date de début du blocage", example="2025-10-28T13:00:00Z"),
+     *             example={
+     *                 "motif": "Suspicion de fraude",
+     *                 "duree": 30,
+     *                 "unite": "jours",
+     *                 "dateDebut": "2025-10-28T13:00:00Z"
+     *             }
      *         )
      *     ),
      *     @OA\Response(
@@ -670,7 +682,27 @@ class CompteController extends Controller
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Compte bloqué avec succès"),
-     *             @OA\Property(property="data", ref="#/components/schemas/Compte")
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="id", type="string", example="550e8400-e29b-41d4-a716-446655440000"),
+     *                 @OA\Property(property="numeroCompte", type="string", example="C00123456"),
+     *                 @OA\Property(property="titulaire", type="string", example="Amadou Diallo"),
+     *                 @OA\Property(property="type", type="string", example="epargne"),
+     *                 @OA\Property(property="solde", type="number", format="float", example=1250000),
+     *                 @OA\Property(property="devise", type="string", example="FCFA"),
+     *                 @OA\Property(property="dateCreation", type="string", format="date-time"),
+     *                 @OA\Property(property="statut", type="string", example="bloque"),
+     *                 @OA\Property(property="metadonnees", type="object",
+     *                     @OA\Property(property="dateDebutBlocage", type="string", format="date-time", example="2025-10-28T13:00:00Z"),
+     *                     @OA\Property(property="dateDeblocageAutomatique", type="string", format="date-time", description="Date de déblocage automatique si expiré"),
+     *                     @OA\Property(property="motifDeblocageAutomatique", type="string", description="Motif du déblocage automatique"),
+     *                     @OA\Property(property="dateFinBlocage", type="string", format="date-time", example="2025-11-27T13:00:00Z"),
+     *                     @OA\Property(property="motifBlocage", type="string", example="Suspicion de fraude"),
+     *                     @OA\Property(property="dureeBlocage", type="integer", example=30),
+     *                     @OA\Property(property="uniteBlocage", type="string", example="jours"),
+     *                     @OA\Property(property="derniereModification", type="string", format="date-time"),
+     *                     @OA\Property(property="version", type="integer", example=2)
+     *                 )
+     *             )
      *         )
      *     )
      * )
@@ -680,7 +712,8 @@ class CompteController extends Controller
         $request->validate([
             'motif' => 'required|string|max:255',
             'duree' => 'required|integer|min:1',
-            'unite' => 'required|in:jours,mois'
+            'unite' => 'required|in:jours,mois',
+            'dateDebut' => 'required|date|after_or_equal:now'
         ]);
 
         $compte = Compte::find($id);
@@ -703,28 +736,28 @@ class CompteController extends Controller
             return $this->errorResponse('Un compte chèque ne peut pas être bloqué, seulement fermé', 400);
         }
 
-        // Calculer la date de fin de blocage
-        $dateDebutBlocage = now();
+        // Utiliser la date de début fournie par l'utilisateur
+        $dateDebutBlocage = \Carbon\Carbon::parse($request->dateDebut);
         $dateFinBlocage = $request->unite === 'jours'
             ? $dateDebutBlocage->copy()->addDays($request->duree)
             : $dateDebutBlocage->copy()->addMonths($request->duree);
 
-        // Mettre à jour le compte
+        // Mettre à jour le compte avec les dates de blocage (sans changer le statut immédiatement)
         $compte->update([
-            'statut' => 'bloque',
             'metadonnees' => array_merge($compte->metadonnees ?? [], [
                 'motifBlocage' => $request->motif,
-                'dateBlocage' => $dateDebutBlocage,
-                'dateDeblocagePrevue' => $dateFinBlocage,
+                'dateDebutBlocage' => $dateDebutBlocage,
+                'dateFinBlocage' => $dateFinBlocage,
                 'dureeBlocage' => $request->duree,
                 'uniteBlocage' => $request->unite,
+                'statutProgramme' => 'bloque', // Statut programmé
                 'derniereModification' => now(),
                 'version' => ($compte->metadonnees['version'] ?? 1) + 1
             ])
         ]);
 
-        // Programmer l'archivage automatique après expiration du blocage
-        \App\Jobs\ArchiveExpiredBlockedAccounts::dispatch()->delay($dateFinBlocage);
+        // Programmer le blocage automatique à la date de début
+        \App\Jobs\ArchiveExpiredBlockedAccounts::dispatch()->delay($dateDebutBlocage);
 
         return $this->successResponse(new CompteResource($compte), 'Compte bloqué avec succès');
     }

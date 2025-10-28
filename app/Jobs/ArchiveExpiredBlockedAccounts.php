@@ -27,33 +27,58 @@ class ArchiveExpiredBlockedAccounts implements ShouldQueue
     {
         Log::info('Starting ArchiveExpiredBlockedAccounts job');
 
+        // Vérifier les comptes à bloquer (date de début atteinte)
+        $accountsToBlock = Compte::where('statut', 'actif')
+            ->where('metadonnees->statutProgramme', 'bloque')
+            ->whereNotNull('metadonnees->dateDebutBlocage')
+            ->get()
+            ->filter(function ($compte) {
+                return \Carbon\Carbon::parse($compte->metadonnees['dateDebutBlocage'])->lte(now());
+            });
+
+        Log::info("Found {$accountsToBlock->count()} accounts to block");
+
+        foreach ($accountsToBlock as $compte) {
+            DB::transaction(function () use ($compte) {
+                try {
+                    // Bloquer le compte
+                    $compte->update(['statut' => 'bloque']);
+                    Log::info("Blocked account {$compte->numero_compte} as scheduled");
+                } catch (\Exception $e) {
+                    Log::error("Failed to block account {$compte->numero_compte}: " . $e->getMessage());
+                    throw $e;
+                }
+            });
+        }
+
+        // Vérifier les comptes bloqués expirés à archiver
         $expiredBlockedAccounts = Compte::where('statut', 'bloque')
             ->where(function ($query) {
-                $query->where('metadonnees->dateDeblocagePrevue', '<=', now())
-                      ->whereNotNull('metadonnees->dateDeblocagePrevue');
+                $query->where('metadonnees->dateFinBlocage', '<=', now())
+                      ->whereNotNull('metadonnees->dateFinBlocage');
             })
             ->get();
 
-        Log::info("Found {$expiredBlockedAccounts->count()} expired blocked accounts");
+        Log::info("Found {$expiredBlockedAccounts->count()} expired blocked accounts to archive");
 
         foreach ($expiredBlockedAccounts as $compte) {
             DB::transaction(function () use ($compte) {
                 try {
-                   
-                    $this->archiveToNeon($compte);
+                    // Pour l'instant, on commente l'archivage vers Neon
+                    // $this->archiveToNeon($compte);
 
                     // Archiver toutes les transactions du compte
-                    $transactions = Transaction::where('compte_id', $compte->id)->get();
-                    foreach ($transactions as $transaction) {
-                        $this->archiveTransactionToNeon($transaction);
-                    }
+                    // $transactions = Transaction::where('compte_id', $compte->id)->get();
+                    // foreach ($transactions as $transaction) {
+                    //     $this->archiveTransactionToNeon($transaction);
+                    // }
 
-                    
+                    // Simplement supprimer le compte (soft delete)
                     $compte->delete();
 
-                    Log::info("Archived account {$compte->numero_compte} and its transactions");
+                    Log::info("Soft deleted expired blocked account {$compte->numero_compte}");
                 } catch (\Exception $e) {
-                    Log::error("Failed to archive account {$compte->numero_compte}: " . $e->getMessage());
+                    Log::error("Failed to process account {$compte->numero_compte}: " . $e->getMessage());
                     throw $e;
                 }
             });

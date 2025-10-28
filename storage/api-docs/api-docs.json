@@ -1024,16 +1024,19 @@
                                 "required": [
                                     "motif",
                                     "duree",
-                                    "unite"
+                                    "unite",
+                                    "dateDebut"
                                 ],
                                 "properties": {
                                     "motif": {
                                         "description": "Motif du blocage",
-                                        "type": "string"
+                                        "type": "string",
+                                        "example": "Suspicion de fraude"
                                     },
                                     "duree": {
                                         "description": "Durée du blocage",
-                                        "type": "integer"
+                                        "type": "integer",
+                                        "example": 30
                                     },
                                     "unite": {
                                         "description": "Unité de durée",
@@ -1041,10 +1044,23 @@
                                         "enum": [
                                             "jours",
                                             "mois"
-                                        ]
+                                        ],
+                                        "example": "jours"
+                                    },
+                                    "dateDebut": {
+                                        "description": "Date de début du blocage",
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2025-10-28T13:00:00Z"
                                     }
                                 },
                                 "type": "object"
+                            },
+                            "example": {
+                                "motif": "Suspicion de fraude",
+                                "duree": 30,
+                                "unite": "jours",
+                                "dateDebut": "2025-10-28T13:00:00Z"
                             }
                         }
                     }
@@ -1720,6 +1736,41 @@
                             "version": {
                                 "type": "integer",
                                 "example": 1
+                            },
+                            "dateDebutBlocage": {
+                                "type": "string",
+                                "format": "date-time",
+                                "description": "Date de début du blocage"
+                            },
+                            "dateFinBlocage": {
+                                "type": "string",
+                                "format": "date-time",
+                                "description": "Date de fin du blocage"
+                            },
+                            "motifBlocage": {
+                                "type": "string",
+                                "description": "Motif du blocage"
+                            },
+                            "dureeBlocage": {
+                                "type": "integer",
+                                "description": "Durée du blocage"
+                            },
+                            "uniteBlocage": {
+                                "type": "string",
+                                "enum": [
+                                    "jours",
+                                    "mois"
+                                ],
+                                "description": "Unité de durée du blocage"
+                            },
+                            "dateDeblocageAutomatique": {
+                                "type": "string",
+                                "format": "date-time",
+                                "description": "Date de déblocage automatique si expiré"
+                            },
+                            "motifDeblocageAutomatique": {
+                                "type": "string",
+                                "description": "Motif du déblocage automatique"
                             }
                         },
                         "type": "object"
