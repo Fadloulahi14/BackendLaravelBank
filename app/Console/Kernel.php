@@ -12,8 +12,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Gérer les blocages et archivages des comptes toutes les 2 minutes
-        $schedule->job(new \App\Jobs\ArchiveExpiredBlockedAccounts)->everyTwoMinutes();
+        // Vérifier et bloquer les comptes programmés chaque minute
+        $schedule->job(new \App\Jobs\ArchiveExpiredBlockedAccounts)->everyMinute();
 
         // Vérifier et débloquer automatiquement les comptes dont la période de blocage est expirée toutes les 2 minutes
         $schedule->job(new \App\Jobs\UnarchiveExpiredBlockedAccounts)->everyTwoMinutes();
