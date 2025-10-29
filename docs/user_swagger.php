@@ -1,4 +1,8 @@
 <?php
+
+/*
+// Documentation Swagger pour les utilisateurs - COMMENTÉE TEMPORAIREMENT
+// Cette section sera décommentée lorsque la gestion des utilisateurs sera activée
 /**
  * @OA\Schema(
  *     schema="User",
@@ -13,6 +17,18 @@
  *     @OA\Property(property="derniereModification", type="string", format="date-time")
  * )
  */
+
+/*
+// Documentation Swagger pour les utilisateurs - COMMENTÉE TEMPORAIREMENT
+// Cette section sera décommentée lorsque la gestion des utilisateurs sera activée
+
+/*
+// Documentation Swagger pour les utilisateurs - COMMENTÉ TEMPORAIREMENT
+// Cette section sera décommentée lorsque la gestion des utilisateurs sera activée
+
+/*
+// Documentation Swagger pour les utilisateurs - COMMENTÉ TEMPORAIREMENT
+// Cette section sera décommentée lorsque la gestion des utilisateurs sera activée
 
 /**
  * @OA\Get(

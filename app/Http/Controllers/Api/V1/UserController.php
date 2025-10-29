@@ -14,8 +14,8 @@ use App\Constants\StatusCodes;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
-// Import des annotations Swagger depuis le fichier séparé
-require_once base_path('docs/user_swagger.php');
+// Import des annotations Swagger depuis le fichier séparé - COMMENTÉ TEMPORAIREMENT
+ require_once base_path('docs/user_swagger.php');
 
 class UserController extends Controller
 {

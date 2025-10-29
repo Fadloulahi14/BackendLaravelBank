@@ -121,7 +121,7 @@
             }
         },
         "/register": {
-            "post": {
+            "posta": {
                 "tags": [
                     "Authentification"
                 ],
@@ -1098,7 +1098,7 @@
             }
         },
         "/comptes/{id}/debloquer": {
-            "post": {
+            "posta": {
                 "tags": [
                     "Comptes"
                 ],

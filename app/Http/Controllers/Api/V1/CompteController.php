@@ -51,6 +51,11 @@ class CompteController extends Controller
             return $this->errorResponse(Messages::ERROR_UNAUTHORIZED, StatusCodes::UNAUTHORIZED);
         }
 
+        // Vérifier les scopes
+        if (!$request->user()->tokenCan('client') && !$request->user()->tokenCan('admin')) {
+            return $this->errorResponse('Scope insuffisant pour accéder aux comptes', StatusCodes::FORBIDDEN);
+        }
+
         $comptes = $this->compteService->listComptes($request, $user);
 
         $links = [
@@ -78,6 +83,11 @@ class CompteController extends Controller
      */
     public function store(StoreCompteRequest $request): JsonResponse
     {
+        // Vérifier les scopes pour la création de comptes
+        if (!$request->user()->tokenCan('admin')) {
+            return $this->errorResponse('Seul un administrateur peut créer des comptes', StatusCodes::FORBIDDEN);
+        }
+
         try {
             $compte = $this->compteService->createCompte($request->validated());
 

@@ -36,6 +36,28 @@ class AuthController extends Controller
         }
     }
 
+    /**
+     * Rafraîchir le token d'accès
+     */
+    public function refresh(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            $newToken = $this->authService->refreshToken($user);
+
+            $scopes = $user->type === 'admin' ? ['admin'] : ['client'];
+
+            return $this->successResponse([
+                'access_token' => $newToken,
+                'token_type' => 'Bearer',
+                'scopes' => $scopes,
+            ], 'Token rafraîchi avec succès');
+        } catch (\Exception $e) {
+            Log::error('Token refresh error: ' . $e->getMessage());
+            return $this->errorResponse($e->getMessage(), $e->getCode() ?: StatusCodes::INTERNAL_SERVER_ERROR);
+        }
+    }
+
     public function register(Request $request): JsonResponse
     {
         try {

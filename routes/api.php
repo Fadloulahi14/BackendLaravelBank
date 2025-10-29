@@ -22,6 +22,7 @@ Route::prefix('v1')->group(function () {
     Route::post('login', [App\Http\Controllers\Api\V1\AuthController::class, 'login']);
     Route::post('register', [App\Http\Controllers\Api\V1\AuthController::class, 'register']);
     Route::middleware('auth:api')->post('logout', [App\Http\Controllers\Api\V1\AuthController::class, 'logout']);
+    Route::middleware('auth:api')->post('refresh', [App\Http\Controllers\Api\V1\AuthController::class, 'refresh']);
 
     // Routes protégées par authentification
     Route::middleware(['auth:api', 'api.rating'])->group(function () {
@@ -31,8 +32,8 @@ Route::prefix('v1')->group(function () {
         Route::post('comptes/{compte}/debloquer', [CompteController::class, 'debloquer']);
         Route::post('comptes/test-email', [CompteController::class, 'testEmail']);
 
-        // Routes des utilisateurs
-        Route::apiResource('users', UserController::class);
+        // Routes des utilisateurs - COMMENTÉES TEMPORAIREMENT
+        // Route::apiResource('users', UserController::class);
     });
 });
 

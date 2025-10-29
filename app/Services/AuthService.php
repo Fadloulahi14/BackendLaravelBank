@@ -35,23 +35,28 @@ class AuthService
             throw new \Exception(Messages::USER_INVALID_CREDENTIALS, StatusCodes::UNAUTHORIZED);
         }
 
-        // Génération du token
         try {
-            $token = $user->createToken('API Token')->accessToken;
+            $scopes = $user->type === 'admin' ? ['admin'] : ['client'];
+            $token = $user->createToken('API Token', $scopes);
+
+            $refreshToken = \Illuminate\Support\Str::random(1030);
+
+            return [
+                'user' => [
+                    'id' => $user->id,
+                    'login' => $user->login,
+                    'type' => $user->type,
+                ],
+                'access_token' => $token->accessToken,
+                'refresh_token' => $refreshToken,
+                'token_type' => 'Bearer',
+                'scopes' => $scopes,
+            ];
         } catch (\Exception $tokenException) {
             Log::error('Token creation error: ' . $tokenException->getMessage());
             Log::error('Token creation error trace: ' . $tokenException->getTraceAsString());
             throw new \Exception('Erreur lors de la génération du token', StatusCodes::INTERNAL_SERVER_ERROR);
         }
-
-        return [
-            'user' => [
-                'id' => $user->id,
-                'login' => $user->login,
-                'type' => $user->type,
-            ],
-            'token' => $token,
-        ];
     }
 
     /**
@@ -88,8 +93,9 @@ class AuthService
             'adresse' => $data['adresse'],
         ]);
 
-        // Génération du token
-        $token = $user->createToken('API Token')->accessToken;
+        // Génération du token avec scope approprié
+        $scopes = $user->type === 'admin' ? ['admin'] : ['client'];
+        $token = $user->createToken('API Token', $scopes);
 
         return [
             'user' => [
@@ -97,7 +103,9 @@ class AuthService
                 'login' => $user->login,
                 'type' => $user->type,
             ],
-            'token' => $token,
+            'access_token' => $token->accessToken,
+            'token_type' => 'Bearer',
+            'scopes' => $scopes,
         ];
     }
 
