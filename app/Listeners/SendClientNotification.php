@@ -7,21 +7,18 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use App\Services\EmailService;
-use App\Services\SMSService;
 
 class SendClientNotification implements ShouldQueue
 {
     use InteractsWithQueue;
 
-    protected SMSService $smsService;
     protected EmailService $emailService;
 
     /**
      * Create the event listener.
      */
-    public function __construct(SMSService $smsService, EmailService $emailService)
+    public function __construct(EmailService $emailService)
     {
-        $this->smsService = $smsService;
         $this->emailService = $emailService;
     }
 
@@ -34,17 +31,14 @@ class SendClientNotification implements ShouldQueue
             // Envoyer l'e-mail avec les identifiants
             $this->sendCredentialsEmail($event);
 
-            // Envoyer le SMS avec le code d'activation
-            $this->sendActivationSMS($event);
-
-            Log::info('Notifications envoyées avec succès pour le compte', [
+            Log::info('Email envoyé avec succès pour le compte', [
                 'compte_id' => $event->compte->id,
                 'user_id' => $event->user->id,
                 'numero_compte' => $event->compte->numero_compte
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur lors de l\'envoi des notifications', [
+            Log::error('Erreur lors de l\'envoi de l\'email', [
                 'compte_id' => $event->compte->id,
                 'user_id' => $event->user->id,
                 'error' => $e->getMessage()
@@ -67,18 +61,6 @@ class SendClientNotification implements ShouldQueue
         );
     }
 
-    /**
-     * Envoyer le SMS avec le code d'activation
-     */
-    private function sendActivationSMS(CompteCreeEvent $event): void
-    {
-        $message = "Bienvenue {$event->user->client->nom}! Votre compte bancaire {$event->compte->numero_compte} a été créé. Code d'activation: {$event->codeActivation}";
-
-        $this->smsService->sendSMS(
-            $event->user->client->telephone,
-            $message
-        );
-    }
 
     /**
      * Handle a job failure.

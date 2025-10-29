@@ -29,6 +29,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('comptes', CompteController::class);
         Route::post('comptes/{compte}/bloquer', [CompteController::class, 'bloquer']);
         Route::post('comptes/{compte}/debloquer', [CompteController::class, 'debloquer']);
+        Route::post('comptes/test-email', [CompteController::class, 'testEmail']);
 
         // Routes des utilisateurs
         Route::apiResource('users', UserController::class);

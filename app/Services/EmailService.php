@@ -21,6 +21,13 @@ class EmailService
     public function sendClientCredentials(User $user, Compte $compte, string $motDePasseGenere): bool
     {
         try {
+            Log::info('Tentative d\'envoi d\'email - Début', [
+                'user_id' => $user->id,
+                'compte_id' => $compte->id,
+                'email' => $user->client->email,
+                'numero_compte' => $compte->numero_compte
+            ]);
+
             Mail::to($user->client->email)->send(
                 new ClientCredentialsMail($user, $compte, $motDePasseGenere)
             );
@@ -39,7 +46,8 @@ class EmailService
                 'user_id' => $user->id,
                 'compte_id' => $compte->id,
                 'email' => $user->client->email,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return false;
@@ -58,6 +66,12 @@ class EmailService
     public function sendNotification(string $email, string $subject, string $message, array $data = []): bool
     {
         try {
+            Log::info('Tentative d\'envoi d\'email de notification', [
+                'to' => $email,
+                'subject' => $subject,
+                'timestamp' => now()
+            ]);
+
             // Ici vous pouvez créer un mail générique ou utiliser une classe Mailable existante
             Mail::raw($message, function ($mail) use ($email, $subject) {
                 $mail->to($email)->subject($subject);
@@ -75,7 +89,8 @@ class EmailService
             Log::error('Erreur lors de l\'envoi de l\'e-mail de notification', [
                 'to' => $email,
                 'subject' => $subject,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return false;
@@ -91,6 +106,43 @@ class EmailService
     public function isValidEmail(string $email): bool
     {
         return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+    }
+
+    /**
+     * Tester l'envoi d'email
+     *
+     * @param string $email
+     * @return bool
+     */
+    public function testEmail(string $email = 'fadloulahi14@gmail.com'): bool
+    {
+        try {
+            Log::info('Test d\'envoi d\'email - Début', [
+                'to' => $email,
+                'timestamp' => now()
+            ]);
+
+            Mail::raw('Ceci est un email de test pour vérifier le service de messagerie.', function ($mail) use ($email) {
+                $mail->to($email)->subject('Test Email Service - Laravel Bank');
+            });
+
+            Log::info('Test d\'envoi d\'email - Succès', [
+                'to' => $email,
+                'timestamp' => now()
+            ]);
+
+            return true;
+
+        } catch (\Exception $e) {
+            Log::error('Test d\'envoi d\'email - Échec', [
+                'to' => $email,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'timestamp' => now()
+            ]);
+
+            return false;
+        }
     }
 
     /**

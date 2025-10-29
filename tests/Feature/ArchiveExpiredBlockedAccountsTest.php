@@ -28,19 +28,19 @@ class ArchiveExpiredBlockedAccountsTest extends TestCase
             ]
         ]);
 
-        // Créer une transaction pour ce compte
+        
         $transaction = Transaction::create([
             'id' => (string) \Illuminate\Support\Str::uuid(),
             'compte_id' => $compte->id,
             'type' => 'depot',
             'montant' => 50000,
-            'devise' => 'FCFA',
+            'devise' => 'FCF',
             'description' => 'Test transaction',
             'statut' => 'validee',
             'date_transaction' => now(),
         ]);
 
-        // Vérifier que le compte existe avant l'archivage
+       
         $this->assertDatabaseHas('comptes', ['id' => $compte->id]);
         $this->assertDatabaseHas('transactions', ['id' => $transaction->id]);
 

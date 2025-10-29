@@ -6,112 +6,45 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
-use App\Models\Admin;
-use App\Models\Client;
-use App\Models\Role;
+use App\Services\UserService;
 use App\Traits\ApiResponse;
 use App\Exceptions\UserNotFoundException;
+use App\Constants\Messages;
+use App\Constants\StatusCodes;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
-/**
- * @OA\Schema(
- *     schema="User",
- *     @OA\Property(property="id", type="string", format="uuid", example="550e8400-e29b-41d4-a716-446655440000"),
- *     @OA\Property(property="nom", type="string", example="Amadou Diallo"),
- *     @OA\Property(property="nci", type="string", example="123456789012"),
- *     @OA\Property(property="email", type="string", format="email", example="amadou.diallo@email.com"),
- *     @OA\Property(property="telephone", type="string", example="+221771234567"),
- *     @OA\Property(property="adresse", type="string", example="Dakar, Sénégal"),
- *     @OA\Property(property="role", type="string", enum={"admin", "client"}, example="client"),
- *     @OA\Property(property="dateCreation", type="string", format="date-time"),
- *     @OA\Property(property="derniereModification", type="string", format="date-time")
- * )
- */
+// Import des annotations Swagger depuis le fichier séparé
+require_once base_path('docs/user_swagger.php');
+
 class UserController extends Controller
 {
     use ApiResponse;
 
-    /**
-     * @OA\Get(
-     *     path="/users",
-     *     summary="Lister tous les utilisateurs",
-     *     description="Récupère une liste paginée d'utilisateurs avec possibilité de filtrage et tri",
-     *     operationId="getUsers",
-     *     tags={"Utilisateurs"},
-     *     @OA\Parameter(
-     *         name="page",
-     *         in="query",
-     *         description="Numéro de page",
-     *         required=false,
-     *         @OA\Schema(type="integer", default=1)
-     *     ),
-     *     @OA\Parameter(
-     *         name="limit",
-     *         in="query",
-     *         description="Nombre d'éléments par page",
-     *         required=false,
-     *         @OA\Schema(type="integer", default=10, maximum=100)
-     *     ),
-     *     @OA\Parameter(
-     *         name="role",
-     *         in="query",
-     *         description="Filtrer par rôle",
-     *         required=false,
-     *         @OA\Schema(type="string", enum={"admin", "client"})
-     *     ),
-     *     @OA\Parameter(
-     *         name="search",
-     *         in="query",
-     *         description="Recherche par nom, email ou téléphone",
-     *         required=false,
-     *         @OA\Schema(type="string")
-     *     ),
-     *     @OA\Parameter(
-     *         name="sort",
-     *         in="query",
-     *         description="Champ de tri",
-     *         required=false,
-     *         @OA\Schema(type="string", enum={"dateCreation", "nom"}, default="dateCreation")
-     *     ),
-     *     @OA\Parameter(
-     *         name="order",
-     *         in="query",
-     *         description="Ordre de tri",
-     *         required=false,
-     *         @OA\Schema(type="string", enum={"asc", "desc"}, default="desc")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Liste des utilisateurs récupérée avec succès",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/User")),
-     *             @OA\Property(property="pagination", ref="#/components/schemas/PaginationMeta"),
-     *             @OA\Property(property="links", type="object",
-     *                 @OA\Property(property="self", type="string"),
-     *                 @OA\Property(property="next", type="string"),
-     *                 @OA\Property(property="first", type="string"),
-     *                 @OA\Property(property="last", type="string")
-     *             )
-     *         )
-     *     )
-     * )
-     */
+    protected UserService $userService;
+
+    public function __construct(UserService $userService)
+    {
+        $this->userService = $userService;
+    }
+
     public function index(Request $request): JsonResponse
     {
-        $query = User::query();
-
-        // Filtrage par type si demandé
+        $filters = [];
         if ($request->has('type') && in_array($request->type, ['client', 'admin'])) {
-            if ($request->type === 'client') {
-                $query->whereHas('client');
-            } elseif ($request->type === 'admin') {
-                $query->whereHas('admin');
-            }
+            $filters['type'] = $request->type;
+        }
+        if ($request->has('search')) {
+            $filters['search'] = $request->search;
+        }
+        if ($request->has('sort')) {
+            $filters['sort'] = $request->sort;
+        }
+        if ($request->has('order')) {
+            $filters['order'] = $request->order;
         }
 
-        $users = $query->with(['client', 'admin'])->paginate($request->get('per_page', 10));
+        $users = $this->userService->listUsers($filters, $request->get('per_page', 10));
 
         return $this->paginatedResponse(
             UserResource::collection($users),
@@ -122,215 +55,63 @@ class UserController extends Controller
         );
     }
 
-    /**
-     * @OA\Post(
-     *     path="/users",
-     *     summary="Créer un nouvel utilisateur",
-     *     description="Crée un nouvel utilisateur dans le système",
-     *     operationId="createUser",
-     *     tags={"Utilisateurs"},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"nom", "nci", "email", "telephone", "adresse"},
-     *             @OA\Property(property="nom", type="string", description="Nom complet"),
-     *             @OA\Property(property="nci", type="string", description="Numéro CNI"),
-     *             @OA\Property(property="email", type="string", format="email", description="Adresse email"),
-     *             @OA\Property(property="telephone", type="string", description="Numéro de téléphone"),
-     *             @OA\Property(property="adresse", type="string", description="Adresse complète"),
-     *             @OA\Property(property="role", type="string", enum={"admin", "client"}, description="Rôle utilisateur", default="client")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=201,
-     *         description="Utilisateur créé avec succès",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Utilisateur créé avec succès"),
-     *             @OA\Property(property="data", ref="#/components/schemas/User")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Erreur de validation",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Erreur de validation"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     )
-     * )
-     */
     public function store(StoreUserRequest $request): JsonResponse
     {
-        $validated = $request->validated();
+        try {
+            $user = $this->userService->createUser($request->validated());
 
-        // Déterminer le modèle à utiliser selon le rôle
-        $roleSlug = Role::find($validated['role_id'])->slug;
-
-        if ($roleSlug === 'admin') {
-            $user = Admin::create($validated);
-        } else {
-            $user = Client::create($validated);
+            return $this->successResponse(
+                new UserResource($user),
+                Messages::SUCCESS_CREATED,
+                StatusCodes::CREATED
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse($e->getMessage(), $e->getCode() ?: StatusCodes::BAD_REQUEST);
         }
-
-        return $this->successResponse(
-            new UserResource($user),
-            'Utilisateur créé avec succès',
-            201
-        );
     }
 
-    /**
-     * @OA\Get(
-     *     path="/users/{id}",
-     *     summary="Détails d'un utilisateur",
-     *     description="Récupère les détails d'un utilisateur spécifique avec ses comptes",
-     *     operationId="getUser",
-     *     tags={"Utilisateurs"},
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="ID de l'utilisateur",
-     *         @OA\Schema(type="string", format="uuid")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Détails de l'utilisateur récupérés",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="data", ref="#/components/schemas/User")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Utilisateur non trouvé",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string"),
-     *             @OA\Property(property="errors", type="object",
-     *                 @OA\Property(property="code", type="string", example="USER_NOT_FOUND"),
-     *                 @OA\Property(property="details", type="object")
-     *             )
-     *         )
-     *     )
-     * )
-     */
     public function show(string $id): JsonResponse
     {
-        $user = User::with(['client', 'admin'])->find($id);
-
-        if (!$user) {
-            throw new UserNotFoundException($id);
+        try {
+            $user = $this->userService->findUserById($id);
+            return $this->successResponse(new UserResource($user));
+        } catch (\Exception $e) {
+            return $this->errorResponse($e->getMessage(), $e->getCode() ?: StatusCodes::NOT_FOUND);
         }
-
-        return $this->successResponse(new UserResource($user));
     }
 
-    /**
-     * @OA\Patch(
-     *     path="/users/{id}",
-     *     summary="Mettre à jour un utilisateur",
-     *     description="Met à jour partiellement un utilisateur existant",
-     *     operationId="updateUser",
-     *     tags={"Utilisateurs"},
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="ID de l'utilisateur",
-     *         @OA\Schema(type="string", format="uuid")
-     *     ),
-     *     @OA\RequestBody(
-     *         @OA\JsonContent(
-     *             @OA\Property(property="nom", type="string", description="Nouveau nom"),
-     *             @OA\Property(property="nci", type="string", description="Nouveau numéro CNI"),
-     *             @OA\Property(property="email", type="string", format="email", description="Nouvel email"),
-     *             @OA\Property(property="telephone", type="string", description="Nouveau téléphone"),
-     *             @OA\Property(property="adresse", type="string", description="Nouvelle adresse"),
-     *             @OA\Property(property="role", type="string", enum={"admin", "client"}, description="Nouveau rôle")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Utilisateur mis à jour avec succès",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Utilisateur mis à jour avec succès"),
-     *             @OA\Property(property="data", ref="#/components/schemas/User")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Utilisateur non trouvé",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     )
-     * )
-     */
     public function update(Request $request, string $id): JsonResponse
     {
-        $user = User::find($id);
+        try {
+            $user = User::find($id);
+            if (!$user) {
+                throw new UserNotFoundException($id);
+            }
 
-        if (!$user) {
-            throw new UserNotFoundException($id);
+            $updatedUser = $this->userService->updateUser($user, $request->only(['nom', 'nci', 'email', 'telephone', 'adresse']));
+
+            return $this->successResponse(
+                new UserResource($updatedUser),
+                Messages::SUCCESS_UPDATED
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse($e->getMessage(), $e->getCode() ?: StatusCodes::BAD_REQUEST);
         }
-
-        $user->update($request->only(['nom', 'nci', 'email', 'telephone', 'adresse', 'role']));
-
-        return $this->successResponse(
-            new UserResource($user),
-            'Utilisateur mis à jour avec succès'
-        );
     }
 
-    /**
-     * @OA\Delete(
-     *     path="/users/{id}",
-     *     summary="Supprimer un utilisateur",
-     *     description="Supprime un utilisateur existant",
-     *     operationId="deleteUser",
-     *     tags={"Utilisateurs"},
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="ID de l'utilisateur",
-     *         @OA\Schema(type="string", format="uuid")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Utilisateur supprimé avec succès",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Utilisateur supprimé avec succès")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Utilisateur non trouvé",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     )
-     * )
-     */
     public function destroy(string $id): JsonResponse
     {
-        $user = User::find($id);
+        try {
+            $user = User::find($id);
+            if (!$user) {
+                throw new UserNotFoundException($id);
+            }
 
-        if (!$user) {
-            throw new UserNotFoundException($id);
+            $this->userService->deleteUser($user);
+
+            return $this->successResponse(null, Messages::SUCCESS_DELETED);
+        } catch (\Exception $e) {
+            return $this->errorResponse($e->getMessage(), $e->getCode() ?: StatusCodes::BAD_REQUEST);
         }
-
-        $user->delete();
-
-        return $this->successResponse(null, 'Utilisateur supprimé avec succès');
     }
 }
