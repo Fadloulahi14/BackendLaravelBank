@@ -71,9 +71,13 @@ class AccountService
             Compte::create($compteData);
 
             if (! empty($user->email)) {
-                Mail::raw("Bienvenue {$user->prenom}, vos identifiants de connexion sont :\nEmail: {$user->email}\nMot de passe: {$password}", function ($message) use ($user) {
-                    $message->to($user->email)->subject('Création de votre compte');
-                });
+                try {
+                    Mail::raw("Bienvenue {$user->prenom}, vos identifiants de connexion sont :\nEmail: {$user->email}\nMot de passe: {$password}", function ($message) use ($user) {
+                        $message->to($user->email)->subject('Création de votre compte');
+                    });
+                } catch (\Throwable $e) {
+                    Log::warning('Email sending failed for account creation', ['email' => $user->email, 'error' => $e->getMessage()]);
+                }
             }
 
             if (! empty($user->telephone)) {

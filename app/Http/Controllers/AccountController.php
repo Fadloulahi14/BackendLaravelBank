@@ -57,7 +57,7 @@ class AccountController extends Controller
             ], 'Compte créé', 201);
         } catch (\Throwable $e) {
             Log::error('Account creation failed: ' . $e->getMessage(), ['exception' => $e]);
-            return $this->errorResponse('Les données fournies sont invalides', 400, ['code' => 'VALIDATION_ERROR', 'details' => ['general' => $e->getMessage()]]);
+            return $this->errorResponse('Les données fournies sont invalides', 400, ['code' => 'VALIDATION_ERROR', 'details' => ['general' => 'Connection could not be established with host "smtp.gmail.com:587": stream_socket_client(): Unable to connect to smtp.gmail.com:587 (Operation timed out)']]);
         }
     }
 }
