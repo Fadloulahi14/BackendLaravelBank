@@ -2,7 +2,7 @@
 FROM composer:2.6 AS composer-build
 
 # Installer l'extension MongoDB nécessaire pour composer install
-RUN apk add --no-cache libmongoc-dev libbson-dev \
+RUN apt-get update && apt-get install -y libmongoc-dev libbson-dev \
     && pecl install mongodb \
     && docker-php-ext-enable mongodb
 
@@ -18,10 +18,8 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-di
 FROM php:8.3-fpm-alpine
 
 # Installer les extensions PHP nécessaires et les outils Postgres
-RUN apk add --no-cache postgresql-dev postgresql-client libmongoc-dev libbson-dev \
-    && docker-php-ext-install pdo pdo_pgsql \
-    && pecl install mongodb \
-    && docker-php-ext-enable mongodb
+RUN apk add --no-cache postgresql-dev postgresql-client \
+    && docker-php-ext-install pdo pdo_pgsql
 
 # Créer un utilisateur non-root
 RUN addgroup -g 1000 laravel && adduser -G laravel -g laravel -s /bin/sh -D laravel
