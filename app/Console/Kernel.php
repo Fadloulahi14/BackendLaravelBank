@@ -4,25 +4,25 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use App\Jobs\VerifierBlocageCompteJob;
+use App\Jobs\DebloquerCompteJob;
+use App\Jobs\ArchiveComptesToBufferJob;
+use App\Jobs\RestoreFromBufferJob;
 
 class Kernel extends ConsoleKernel
 {
-    /**
-     * Define the application's command schedule.
-     */
-    protected function schedule(Schedule $schedule): void
+    protected function schedule(Schedule $schedule)
     {
-        // Vérifier et bloquer les comptes programmés chaque minute
-        $schedule->job(new \App\Jobs\ArchiveExpiredBlockedAccounts)->everyMinute();
-
-        // Vérifier et débloquer automatiquement les comptes dont la période de blocage est expirée toutes les 2 minutes
-        $schedule->job(new \App\Jobs\UnarchiveExpiredBlockedAccounts)->everyTwoMinutes();
+        // Vérifier les blocages chaque jour
+    $schedule->job(new VerifierBlocageCompteJob)->daily();
+    $schedule->job(new DebloquerCompteJob)->daily();
+    // Transfer archived comptes to buffer once per day
+    $schedule->job(new ArchiveComptesToBufferJob)->daily();
+    // Attempt to restore comptes from buffer (e.g. when deblocage date arrives)
+    $schedule->job(new RestoreFromBufferJob)->daily();
     }
 
-    /**
-     * Register the commands for the application.
-     */
-    protected function commands(): void
+    protected function commands()
     {
         $this->load(__DIR__.'/Commands');
 

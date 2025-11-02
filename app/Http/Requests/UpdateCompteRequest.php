@@ -2,111 +2,66 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Compte;
+use App\Traits\Validators\ValidationTrait;
+use App\Traits\ApiResponseTrait;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 class UpdateCompteRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
+    use ValidationTrait, ApiResponseTrait;
+    public function authorize()
     {
         return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
-    public function rules(): array
+    protected function getClientId()
     {
-        $rules = [];
-
-        // Vérifier qu'au moins un champ est fourni
-        if (empty(array_filter($this->all()))) {
-            $rules['at_least_one_field'] = 'required';
+        $ident = $this->route('identifiant');
+        if (!$ident) {
+            return null;
+        }
+        // Avoid querying the UUID primary key with a non-UUID string which
+        // causes Postgres errors. Resolve by id only when the identifier
+        // matches a UUID pattern; otherwise resolve by numero_compte.
+        $compte = null;
+        if (preg_match('/^[0-9a-fA-F-]{36}$/', (string) $ident)) {
+            $compte = Compte::where('id', $ident)->with('user')->first();
         }
 
-        // Règles pour les champs du compte
-        if ($this->has('titulaire')) {
-            $rules['titulaire'] = 'string|max:255';
+        if (! $compte) {
+            $compte = Compte::where('numero_compte', $ident)->with('user')->first();
         }
-
-        if ($this->has('type')) {
-            $rules['type'] = 'in:epargne,cheque';
-        }
-
-        if ($this->has('solde')) {
-            $rules['solde'] = 'numeric|min:0';
-        }
-
-        if ($this->has('devise')) {
-            $rules['devise'] = 'string|size:3';
-        }
-
-        if ($this->has('statut')) {
-            $rules['statut'] = 'in:actif,bloque,ferme';
-            // Validation personnalisée pour le statut selon le type de compte
-            $compte = $this->route('compte');
-            if ($compte && $this->input('statut') === 'bloque' && $compte->type === 'cheque') {
-                $rules['statut'] .= '|prohibited'; // Empêcher le blocage des comptes chèque
-            }
-        }
-
-        // Règles pour les informations client
-        if ($this->has('informationsClient')) {
-            $clientRules = [];
-
-            if ($this->has('informationsClient.telephone')) {
-                $clientRules['informationsClient.telephone'] = [
-                    'nullable',
-                    'string',
-                    'unique:clients,telephone,' . $this->route('compte')->user->client->id,
-                    new \App\Rules\TelephoneSenegalaisRule()
-                ];
-            }
-
-            if ($this->has('informationsClient.email')) {
-                $clientRules['informationsClient.email'] = [
-                    'nullable',
-                    'email',
-                    'unique:clients,email,' . $this->route('compte')->user->client->id
-                ];
-            }
-
-            if ($this->has('informationsClient.password')) {
-                $clientRules['informationsClient.password'] = 'nullable|string|min:8';
-            }
-
-            if ($this->has('informationsClient.nci')) {
-                $clientRules['informationsClient.nci'] = [
-                    'nullable',
-                    'string',
-                    'unique:clients,nci,' . $this->route('compte')->user->client->id,
-                    new \App\Rules\NciSenegalaisRule()
-                ];
-            }
-
-            $rules = array_merge($rules, $clientRules);
-        }
-
-        return $rules;
+        return $compte && $compte->user ? $compte->user->id : null;
     }
 
-    /**
-     * Get custom messages for validator errors.
-     */
-    public function messages(): array
+    public function rules(): array
     {
+        // Allow partial updates: any field may be omitted. Use "sometimes" so that
+        // only present fields are validated and returned by validated(). This
+        // ensures the controller receives only the submitted fields to persist.
         return [
-            'at_least_one_field.required' => 'Au moins un champ doit être fourni pour la mise à jour.',
-            'informationsClient.telephone.unique' => 'Ce numéro de téléphone est déjà utilisé.',
-            'informationsClient.email.unique' => 'Cette adresse e-mail est déjà utilisée.',
-            'informationsClient.email.email' => 'L\'adresse e-mail doit être valide.',
-            'informationsClient.password.min' => 'Le mot de passe doit contenir au moins 8 caractères.',
-            'informationsClient.nci.unique' => 'Ce numéro de CNI est déjà utilisé.',
-            'statut.prohibited' => 'Un compte chèque ne peut pas être bloqué, seulement fermé.',
+            'titulaire' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'informationsClient' => ['sometimes', 'nullable', 'array'],
+            'informationsClient.telephone' => ['sometimes', 'nullable', 'string'],
+            'informationsClient.email' => ['sometimes', 'nullable', 'email'],
+            'informationsClient.password' => ['sometimes', 'nullable', 'string', 'min:8'],
+            'informationsClient.nci' => ['sometimes', 'nullable', 'string'],
         ];
+    }
+
+    public function withValidator($validator)
+    {
+
+    }
+
+    protected function passedValidation()
+    {
+        $clientId = $this->getClientId();
+        $errors = $this->validateUpdateComptePayload($this->all(), $clientId);
+        if (!empty($errors)) {
+            throw new HttpResponseException($this->validationErrorResponse($errors, 'Validation de la mise à jour invalide', 400));
+        }
     }
 }

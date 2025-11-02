@@ -9,91 +9,76 @@ use Symfony\Component\HttpFoundation\Response;
 
 class LoggingMiddleware
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
+
     public function handle(Request $request, Closure $next): Response
     {
-        $startTime = microtime(true);
-
         $response = $next($request);
 
-        $endTime = microtime(true);
-        $duration = round(($endTime - $startTime) * 1000, 2); // en millisecondes
-
-        // Log les opérations sur les comptes (création, mise à jour, suppression, blocage/déblocage)
-        if (str_contains($request->path(), 'comptes')) {
-            $operation = $this->getOperationType($request);
-
-            if ($operation) {
-                Log::channel('compte_operations')->info($operation, [
-                    'timestamp' => now()->toISOString(),
-                    'host' => $request->getHost(),
-                    'user_agent' => $request->userAgent(),
-                    'ip_address' => $request->ip(),
-                    'user_id' => $request->user() ? $request->user()->id : null,
-                    'method' => $request->method(),
-                    'endpoint' => $request->path(),
-                    'status_code' => $response->getStatusCode(),
-                    'duration_ms' => $duration,
-                    'request_data' => $this->sanitizeRequestData($request),
-                    'response_status' => $response->getStatusCode() >= 200 && $response->getStatusCode() < 300 ? 'success' : 'error'
-                ]);
-            }
+        if ($request->isMethod('post')) {
+            $this->logCreationOperation($request, $response);
         }
 
         return $response;
     }
 
-    /**
-     * Déterminer le type d'opération
-     */
-    private function getOperationType(Request $request): ?string
+    private function logCreationOperation(Request $request, Response $response): void
     {
-        $method = $request->method();
+        $operationName = $this->getOperationName($request);
+        $resource = $this->getResourceName($request);
+
+        if ($operationName && $resource) {
+            $logData = [
+                'date_heure' => now()->toISOString(),
+                'host' => $request->getHost(),
+                'nom_operation' => $operationName,
+                'ressource' => $resource,
+                'status_code' => $response->getStatusCode(),
+                'user_agent' => $request->userAgent(),
+                'ip' => $request->ip(),
+                'url' => $request->fullUrl(),
+                'method' => $request->method(),
+            ];
+
+            Log::info('Opération de création exécutée', $logData);
+        }
+    }
+
+
+    private function getOperationName(Request $request): ?string
+    {
         $path = $request->path();
 
-        if ($method === 'POST' && str_ends_with($path, '/comptes')) {
+        if (str_contains($path, 'accounts')) {
             return 'Création de compte bancaire';
         }
 
-        if ($method === 'PATCH' && preg_match('/\/comptes\/[^\/]+$/', $path)) {
-            return 'Mise à jour de compte bancaire';
+        if (str_contains($path, 'users')) {
+            return 'Création d\'utilisateur';
         }
 
-        if ($method === 'DELETE' && preg_match('/\/comptes\/[^\/]+$/', $path)) {
-            return 'Suppression de compte bancaire';
+        if (str_contains($path, 'clients')) {
+            return 'Création de client';
         }
 
-        if ($method === 'POST' && str_contains($path, '/bloquer')) {
-            return 'Blocage de compte bancaire';
+        if (str_contains($path, 'comptes')) {
+            return 'Création de compte';
         }
 
-        if ($method === 'POST' && str_contains($path, '/debloquer')) {
-            return 'Déblocage de compte bancaire';
+        if (str_contains($path, 'transactions')) {
+            return 'Création de transaction';
+        }
+
+        return 'Création de ressource';
+    }
+
+    private function getResourceName(Request $request): ?string
+    {
+        $path = $request->path();
+
+        if (preg_match('/\/api\/([^\/]+)/', $path, $matches)) {
+            return $matches[1];
         }
 
         return null;
-    }
-
-    /**
-     * Nettoyer les données sensibles de la requête
-     */
-    private function sanitizeRequestData(Request $request): array
-    {
-        $data = $request->all();
-
-        // Masquer les mots de passe et autres données sensibles
-        $sensitiveFields = ['password', 'mot_de_passe', 'code_activation'];
-
-        foreach ($sensitiveFields as $field) {
-            if (isset($data[$field])) {
-                $data[$field] = '***masked***';
-            }
-        }
-
-        return $data;
     }
 }

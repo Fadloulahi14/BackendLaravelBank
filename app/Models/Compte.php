@@ -2,146 +2,166 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\User;
+use App\Models\Client;
+use App\Models\Transaction;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Compte extends Model
 {
-    use HasFactory, \Illuminate\Database\Eloquent\SoftDeletes;
+    use HasFactory;
+    use HasUuids;
 
+    use SoftDeletes;
+
+    protected $table = 'comptes';
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
-        'id',
         'numero_compte',
-        'user_id',
-        'type',
-        'solde',
+        'titulaire_compte',
+        'type_compte',
         'devise',
-        'statut',
-        'metadonnees',
+        'date_creation',
+        'statut_compte',
+        'date_debut_blocage',
+        'date_fin_blocage',
+        'motif_blocage',
+    'date_deblocage',
+        'version',
+        'user_id',
+        'client_id',
+        'manager_id',
+        'is_admin_managed',
+        'solde',
+        'archived',
+        'date_fermeture',
     ];
 
     protected $casts = [
+        'date_creation' => 'datetime',
+        'date_debut_blocage' => 'datetime',
+        'date_fin_blocage' => 'datetime',
+        'date_deblocage' => 'datetime',
+        'archived' => 'boolean',
+        'date_fermeture' => 'datetime',
         'solde' => 'decimal:2',
-        'metadonnees' => 'array',
     ];
 
     protected static function boot()
     {
         parent::boot();
 
+        static::addGlobalScope('non_archived', function ($query) {
+            $query->whereRaw('archived = false');
+        });
+
         static::creating(function ($compte) {
             if (empty($compte->numero_compte)) {
-                $compte->numero_compte = self::generateNumeroCompte();
+                $compte->numero_compte = static::generateNumero();
+            }
+            if (array_key_exists('archived', $compte->attributes) || isset($compte->archived)) {
+                $val = $compte->attributes['archived'] ?? $compte->archived;
+                if (is_bool($val)) {
+                    $compte->attributes['archived'] = $val ? 't' : 'f';
+                }
+            }
+        });
+
+        static::updating(function ($compte) {
+            if (array_key_exists('archived', $compte->attributes) || isset($compte->archived)) {
+                $val = $compte->attributes['archived'] ?? $compte->archived;
+                if (is_bool($val)) {
+                    $compte->attributes['archived'] = $val ? 't' : 'f';
+                }
             }
         });
     }
 
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    public static function generateNumeroCompte(): string
-    {
-        do {
-            $numero = 'C' . strtoupper(Str::random(10));
-        } while (self::where('numero_compte', $numero)->exists());
-
-        return $numero;
-    }
-
-    public function getTitulaireAttribute(): string
-    {
-        return $this->user->nom ?? 'Utilisateur inconnu';
-    }
-
-    public function getDateCreationAttribute()
-    {
-        return $this->created_at;
-    }
-
-    public function getDerniereModificationAttribute()
-    {
-        return $this->updated_at;
-    }
-
-    public function getVersionAttribute(): int
-    {
-        return 1; // Pour l'instant, version statique
-    }
-
-    /**
-     * Scope pour exclure les comptes supprimés (soft delete)
-     */
-    public function scopeNonSupprime($query)
-    {
-        return $query->whereNull('deleted_at');
-    }
-
-    /**
-     * Scope pour rechercher par numéro de compte
-     */
     public function scopeNumero($query, $numero)
     {
-        return $query->where('numero_compte', 'like', "%{$numero}%");
+        return $query->where('numero_compte', $numero);
     }
 
-    /**
-     * Scope pour filtrer les comptes d'un client par téléphone
-     */
-    public function scopeClient($query, $telephone)
+    public function scopeClient($queryOrTelephone, $telephone = null)
     {
-        return $query->whereHas('user', function ($userQuery) use ($telephone) {
-            $userQuery->where('telephone', $telephone);
+        if ($queryOrTelephone instanceof \Illuminate\Database\Eloquent\Builder) {
+            $query = $queryOrTelephone;
+        } else {
+            $query = static::query();
+            $telephone = $queryOrTelephone;
+        }
+
+        return $query->whereHas('clientRelation', function ($q) use ($telephone) {
+            $q->where('telephone', (string) $telephone);
         });
     }
 
-    /**
-     * Scope pour filtrer par type
-     */
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class, 'compte_id');
+    }
+
+    public function clientRelation()
+    {
+        return $this->belongsTo(Client::class, 'client_id');
+    }
+
+
+    public function getClientAttribute()
+    {
+        return $this->clientRelation()->getResults();
+    }
+
+
+    public function client()
+    {
+        return $this->clientRelation();
+    }
+
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function manager()
+    {
+        return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    public function getSoldeAttribute()
+    {
+        if ($this->transactions()->exists()) {
+            $depot = $this->transactions()->where('type', 'depot')->sum('montant');
+            $retrait = $this->transactions()->where('type', 'retrait')->sum('montant');
+            return $depot - $retrait;
+        }
+
+        return $this->attributes['solde'] ?? 0;
+    }
+
+    public function scopeEtat($query, $statut)
+    {
+        return $query->where('statut_compte', $statut);
+    }
+
     public function scopeType($query, $type)
     {
-        return $query->where('type', $type);
+        return $query->where('type_compte', $type);
     }
 
-    /**
-     * Scope pour filtrer par statut
-     */
-    public function scopeStatut($query, $statut)
-    {
-        return $query->where('statut', $statut);
-    }
 
-    /**
-     * Scope pour filtrer les comptes d'un utilisateur spécifique
-     */
-    public function scopeUtilisateur($query, $userId)
+    public static function generateNumero(): string
     {
-        return $query->where('user_id', $userId);
-    }
+        do {
+            $numero = 'ACC-'.now()->format('Ymd').'-'.mt_rand(1000, 9999);
+        } while (static::where('numero_compte', $numero)->exists());
 
-    /**
-     * Relation avec les transactions
-     */
-    public function transactions(): HasMany
-    {
-        return $this->hasMany(Transaction::class);
-    }
-
-    /**
-     * Calculer le solde dynamiquement
-     */
-    public function getSoldeAttribute(): float
-    {
-        return $this->transactions()
-            ->validees()
-            ->get()
-            ->sum('impact_solde');
+        return $numero;
     }
 }

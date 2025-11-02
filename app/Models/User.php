@@ -2,24 +2,40 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Admin;
+use App\Models\Client;
+use App\Models\Compte;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Laravel\Passport\HasApiTokens;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasFactory, Notifiable;
+    use HasUuids;
+    use HasApiTokens;
 
+    // Use UUID primary keys for users
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
         'id',
-        'login',
+        'nom',
+        'prenom',
+        'email',
+        'telephone',
         'password',
+        'activation_code',
+        'activation_expires_at',
     ];
 
     protected $hidden = [
@@ -28,63 +44,22 @@ class User extends Authenticatable
     ];
 
     protected $casts = [
-        'password' => 'hashed',
+        'email_verified_at' => 'datetime',
     ];
 
-    public function client(): HasOne
+    public function client()
     {
         return $this->hasOne(Client::class);
     }
 
-    public function admin(): HasOne
+    public function admin()
     {
         return $this->hasOne(Admin::class);
     }
 
-    public function comptes(): HasOne
-    {
-        return $this->hasOne(Compte::class, 'user_id');
-    }
 
-    public function getTypeAttribute(): string
+    public static function createAccount(array $data, array $compteOverrides = []): self
     {
-        if ($this->client) {
-            return 'client';
-        } elseif ($this->admin) {
-            return 'admin';
-        }
-        return 'unknown';
-    }
-
-    public function getProfileAttribute()
-    {
-        return $this->client ?? $this->admin;
-    }
-
-    /**
-     * Scope pour filtrer par type d'utilisateur
-     */
-    public function scopeOfType($query, $type)
-    {
-        $table = $type . 's';
-        return $query->whereHas($table, function ($q) use ($table) {
-            $q->whereNotNull('id');
-        });
-    }
-
-    /**
-     * Scope pour les clients uniquement
-     */
-    public function scopeClients($query)
-    {
-        return $query->ofType('client');
-    }
-
-    /**
-     * Scope pour les admins uniquement
-     */
-    public function scopeAdmins($query)
-    {
-        return $query->ofType('admin');
+        return app(\App\Services\AccountService::class)->createAccount($data, $compteOverrides);
     }
 }

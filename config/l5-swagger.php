@@ -18,7 +18,7 @@ return [
                 /*
                  * Edit to include full URL in ui for assets
                  */
-                'use_absolute_path' => env('L5_SWAGGER_USE_ABSOLUTE_PATH', false),
+                'use_absolute_path' => env('L5_SWAGGER_USE_ABSOLUTE_PATH', true),
 
                 /*
                 * Edit to set path where swagger ui assets should be stored
@@ -44,8 +44,7 @@ return [
                  * Absolute paths to directory containing the swagger annotations are stored.
                  */
                 'annotations' => [
-                    base_path('app'),
-                    base_path('docs'),
+                    base_path('app/Docs/Swagger'),
                 ],
             ],
         ],
@@ -262,7 +261,7 @@ return [
          * 'method' (sort by HTTP method).
          * Default is the order returned by the server unchanged.
          */
-        'operations_sort' => env('L5_SWAGGER_OPERATIONS_SORT', null),
+        'operations_sort' => env('L5_SWAGGER_OPERATIONS_SORT', 'alpha'),
 
         /*
          * Pass the validatorUrl parameter to SwaggerUi init on the JS side.

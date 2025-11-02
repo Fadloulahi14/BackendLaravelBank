@@ -2,28 +2,30 @@
 
 namespace Database\Factories;
 
+use App\Models\Client;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Client>
- */
 class ClientFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
-    public function definition(): array
+    protected $model = Client::class;
+
+
+    public function definition()
     {
         return [
-            'id' => $this->faker->uuid(),
-            'user_id' => \App\Models\User::factory(),
-            'nom' => $this->faker->name(),
-            'nci' => $this->faker->unique()->numerify('##########'),
-            'email' => $this->faker->unique()->safeEmail(),
-            'telephone' => $this->faker->unique()->phoneNumber(),
-            'adresse' => $this->faker->address(),
+            'id' => (string) Str::uuid(),
+            'nom' => $this->faker->lastName,
+            'prenom' => $this->faker->firstName,
+            'email' => $this->faker->unique()->safeEmail,
+            'telephone' => $this->faker->unique()->phoneNumber,
+            'date_naissance' => $this->faker->date('Y-m-d'),
         ];
+    }
+
+
+    public function withUser()
+    {
+        return $this->for(\App\Models\User::factory());
     }
 }

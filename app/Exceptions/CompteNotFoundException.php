@@ -1,20 +1,22 @@
 <?php
-
 namespace App\Exceptions;
 
-class CompteNotFoundException extends ApiException
+use Exception;
+use App\Traits\ApiResponseTrait;
+
+use Illuminate\Http\JsonResponse;
+
+class CompteNotFoundException extends Exception
 {
-    public function __construct(string $compteId)
+    use ApiResponseTrait;
+
+    public function __construct($numeroCompte)
     {
-        parent::__construct(
-            'Le compte avec l\'ID spécifié n\'existe pas',
-            404,
-            [
-                'code' => 'COMPTE_NOT_FOUND',
-                'details' => [
-                    'compteId' => $compteId
-                ]
-            ]
-        );
+        parent::__construct("Le compte {$numeroCompte} est introuvable");
+    }
+
+    public function render(): JsonResponse
+    {
+        return $this->errorResponse($this->getMessage(), 404, ['code' => 'COMPTE_NOT_FOUND']);
     }
 }

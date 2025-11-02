@@ -1,51 +1,26 @@
 <?php
-
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\User;
+use App\Models\Compte;
 
 class Client extends Model
 {
-    use HasFactory;
-
-    protected $keyType = 'string';
+    use HasFactory, \Illuminate\Database\Eloquent\Concerns\HasUuids;
     public $incrementing = false;
-
+    protected $keyType = 'string';
     protected $fillable = [
-        'id',
-        'user_id',
-        'nom',
-        'nci',
-        'email',
-        'telephone',
-        'adresse',
+        'id', 'nom', 'prenom', 'email', 'telephone', 'date_naissance', 'user_id', 'adresse', 'nci'
     ];
 
-    public function user(): BelongsTo
+    public function user()
     {
         return $this->belongsTo(User::class);
     }
-
-    public function comptes(): HasMany
+    public function comptes()
     {
-        return $this->hasMany(Compte::class);
-    }
-
-    // Méthodes spécifiques aux clients
-    public function getFullNameAttribute(): string
-    {
-        return $this->nom;
-    }
-
-    public function getContactInfoAttribute(): array
-    {
-        return [
-            'email' => $this->email,
-            'telephone' => $this->telephone,
-            'adresse' => $this->adresse,
-        ];
+        return $this->hasMany(Compte::class, 'client_id');
     }
 }

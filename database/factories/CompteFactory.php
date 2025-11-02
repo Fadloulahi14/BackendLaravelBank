@@ -2,31 +2,31 @@
 
 namespace Database\Factories;
 
+use App\Models\User;
+use App\Models\Client;
+use App\Models\Compte;
+use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Compte>
- */
 class CompteFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
-    public function definition(): array
+    protected $model = Compte::class;
+
+    public function definition()
     {
         return [
-            'id' => $this->faker->uuid(),
-            'user_id' => \App\Models\User::factory(),
-            'type' => $this->faker->randomElement(['epargne', 'cheque']),
-            'solde' => $this->faker->randomFloat(2, 0, 1000000),
+            'id' => (string) Str::uuid(),
+            'client_id' => Client::factory()->withUser(),
+            'user_id' => User::factory(),
+            'numero_compte' => 'ACC-'.now()->format('Ymd').'-'.mt_rand(1000,9999),
+            'titulaire_compte' => $this->faker->name(),
+            'type_compte' => $this->faker->randomElement(['courant','epargne','cheque']),
             'devise' => 'FCFA',
-            'statut' => $this->faker->randomElement(['actif', 'bloque', 'ferme']),
-            'metadonnees' => [
-                'derniereModification' => now(),
-                'version' => 1,
-            ],
+            'date_creation' => now()->toDateString(),
+            'statut_compte' => 'actif',
+            'solde' => $this->faker->randomFloat(2, 0, 100000),
+            'version' => 1,
+            'archived' => false,
         ];
     }
 }

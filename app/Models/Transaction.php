@@ -1,83 +1,34 @@
 <?php
-
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Compte;
+use App\Models\User;
 
 class Transaction extends Model
 {
-    use HasFactory;
+    use HasUuids, SoftDeletes;
 
-    protected $keyType = 'string';
     public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
-        'id',
-        'compte_id',
-        'type',
-        'montant',
-        'devise',
-        'description',
-        'statut',
-        'date_transaction',
+        'code_transaction', 'type', 'montant', 'description', 'compte_id', 'agent_id'
     ];
 
     protected $casts = [
         'montant' => 'decimal:2',
-        'date_transaction' => 'datetime',
     ];
 
-    /**
-     * Relation avec le compte
-     */
-    public function compte(): BelongsTo
+    public function compte()
     {
-        return $this->belongsTo(Compte::class);
+        return $this->belongsTo(Compte::class, 'compte_id');
     }
 
-    /**
-     * Scope pour les transactions validées
-     */
-    public function scopeValidees($query)
+    public function agent()
     {
-        return $query->where('statut', 'validee');
-    }
-
-    /**
-     * Scope pour les transactions en attente
-     */
-    public function scopeEnAttente($query)
-    {
-        return $query->where('statut', 'en_attente');
-    }
-
-    /**
-     * Scope pour les transactions annulées
-     */
-    public function scopeAnnulees($query)
-    {
-        return $query->where('statut', 'annulee');
-    }
-
-    /**
-     * Scope pour filtrer par type
-     */
-    public function scopeType($query, $type)
-    {
-        return $query->where('type', $type);
-    }
-
-    /**
-     * Calculer l'impact sur le solde
-     */
-    public function getImpactSoldeAttribute(): float
-    {
-        return match($this->type) {
-            'depot', 'virement' => $this->montant,
-            'retrait', 'frais' => -$this->montant,
-            default => 0
-        };
+        return $this->belongsTo(User::class, 'agent_id');
     }
 }

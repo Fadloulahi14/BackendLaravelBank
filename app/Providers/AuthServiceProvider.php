@@ -2,34 +2,21 @@
 
 namespace App\Providers;
 
-use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
-use Laravel\Passport\Passport;
+use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Gate;
+use App\Models\Transaction;
+use App\Policies\TransactionPolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
-    /**
-     * The model to policy mappings for the application.
-     *
-     * @var array<class-string, class-string>
-     */
-    protected $policies = [
+    public function register(): void
+    {
         //
-    ];
+    }
 
-    /**
-     * Register any authentication / authorization services.
-     */
     public function boot(): void
     {
-        $this->registerPolicies();
-
-        Passport::tokensCan([
-            'client' => 'Accès client - lecture et écriture des comptes',
-            'admin' => 'Accès administrateur - tous les droits',
-        ]);
-
-        Passport::setDefaultScope([
-            'client',
-        ]);
+        // Register policy mappings
+        Gate::policy(Transaction::class, TransactionPolicy::class);
     }
 }

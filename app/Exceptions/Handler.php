@@ -2,13 +2,32 @@
 
 namespace App\Exceptions;
 
-use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 
 class Handler extends ExceptionHandler
 {
     /**
-     * The list of the inputs that are never flashed to the session on validation exceptions.
+     * A list of exception types with their corresponding custom log levels.
+     *
+     * @var array<class-string<\Throwable>, \Psr\Log\LogLevel::*>
+     */
+    protected $levels = [
+        //
+    ];
+
+    /**
+     * A list of the exception types that are not reported.
+     *
+     * @var array<int, class-string<\Throwable>>
+     */
+    protected $dontReport = [
+        //
+    ];
+
+    /**
+     * A list of the inputs that are never flashed for validation exceptions.
      *
      * @var array<int, string>
      */
@@ -19,25 +38,30 @@ class Handler extends ExceptionHandler
     ];
 
     /**
-     * Register the exception handling callbacks for the application.
+     * Render an exception into an HTTP response.
      */
-    public function register(): void
+    public function render($request, Throwable $e)
     {
-        $this->reportable(function (Throwable $e) {
-            //
-        });
-
-        $this->renderable(function (\Illuminate\Auth\AuthenticationException $e, $request) {
-            if ($request->is('api/*')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Non authentifié',
-                    'errors' => [
-                        'code' => 'UNAUTHENTICATED',
-                        'details' => 'Token d\'authentification manquant ou invalide'
-                    ]
-                ], 401);
+        // If request expects JSON (API), return a structured JSON response with status code and message
+        if ($request->expectsJson() || str_starts_with($request->getRequestUri(), '/api')) {
+            $status = 500;
+            if (method_exists($e, 'getStatusCode')) {
+                $status = $e->getStatusCode();
             }
-        });
+
+            $response = [
+                'success' => false,
+                'message' => $e->getMessage() ?: 'Server Error',
+            ];
+
+            if (config('app.debug')) {
+                $response['exception'] = get_class($e);
+                $response['trace'] = $e->getTrace();
+            }
+
+            return new JsonResponse($response, $status);
+        }
+
+        return parent::render($request, $e);
     }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class CompteResource extends JsonResource
@@ -10,53 +9,28 @@ class CompteResource extends JsonResource
     /**
      * Transform the resource into an array.
      *
-     * @return array<string, mixed>
+     * @param  \Illuminate\Http\Request  $request
+     * @return array
      */
-    public function toArray(Request $request): array
+    public function toArray($request)
     {
-        $metadonnees = [
-            'derniereModification' => $this->derniere_modification,
-            'version' => $this->version,
-        ];
-
-        // Ajouter les informations de blocage si elles existent
-        if ($this->metadonnees) {
-            if (isset($this->metadonnees['motifBlocage'])) {
-                $metadonnees['motifBlocage'] = $this->metadonnees['motifBlocage'];
-            }
-            if (isset($this->metadonnees['dateDebutBlocage'])) {
-                $metadonnees['dateDebutBlocage'] = $this->metadonnees['dateDebutBlocage'];
-            }
-            if (isset($this->metadonnees['dateFinBlocage'])) {
-                $metadonnees['dateFinBlocage'] = $this->metadonnees['dateFinBlocage'];
-            }
-            if (isset($this->metadonnees['dureeBlocage'])) {
-                $metadonnees['dureeBlocage'] = $this->metadonnees['dureeBlocage'];
-            }
-            if (isset($this->metadonnees['uniteBlocage'])) {
-                $metadonnees['uniteBlocage'] = $this->metadonnees['uniteBlocage'];
-            }
-            if (isset($this->metadonnees['statutProgramme'])) {
-                $metadonnees['statutProgramme'] = $this->metadonnees['statutProgramme'];
-            }
-            if (isset($this->metadonnees['dateDeblocageAutomatique'])) {
-                $metadonnees['dateDeblocageAutomatique'] = $this->metadonnees['dateDeblocageAutomatique'];
-            }
-            if (isset($this->metadonnees['motifDeblocageAutomatique'])) {
-                $metadonnees['motifDeblocageAutomatique'] = $this->metadonnees['motifDeblocageAutomatique'];
-            }
-        }
-
         return [
-            'id' => $this->id,
             'numeroCompte' => $this->numero_compte,
-            'titulaire' => $this->titulaire,
-            'type' => $this->type,
+            'titulaire' => isset($this->client) ? trim(($this->client->nom ?? '') . ' ' . ($this->client->prenom ?? '')) : ($this->titulaire_compte ?? null),
+            'type' => $this->type_compte ?? $this->type,
             'solde' => $this->solde,
-            'devise' => $this->devise,
-            'dateCreation' => $this->date_creation,
-            'statut' => $this->statut,
-            'metadonnees' => $metadonnees,
+            'devise' => $this->devise ?? 'FCFA',
+            'dateCreation' => optional($this->date_creation ?? $this->created_at)->toIso8601String(),
+            'statut' => $this->statut_compte ?? $this->statut,
+            'motifBlocage' => $this->motif_blocage ?? null,
+            'dateBlocage' => optional($this->date_debut_blocage)->toIso8601String(),
+            'dateDeblocagePrevue' => optional($this->date_fin_blocage)->toIso8601String(),
+            'dateDeblocage' => optional($this->date_deblocage)->toIso8601String(),
+            'dateFermeture' => optional($this->date_fermeture)->toIso8601String(),
+            'metadata' => [
+                'derniereModification' => optional($this->updated_at)->toIso8601String(),
+                'version' => $this->version ?? 1,
+            ],
         ];
     }
 }
