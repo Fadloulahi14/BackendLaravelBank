@@ -2,7 +2,7 @@
 FROM composer:2.6 AS composer-build
 
 # Installer l'extension MongoDB nécessaire pour composer install
-RUN apt-get update && apt-get install -y libmongoc-dev libbson-dev \
+RUN apk add --no-cache libmongoc-dev libbson-dev \
     && pecl install mongodb \
     && docker-php-ext-enable mongodb
 
