@@ -71,9 +71,18 @@ class AccountService
             Compte::create($compteData);
 
             if (! empty($user->email)) {
-                Mail::raw("Bienvenue {$user->prenom}, vos identifiants de connexion sont :\nEmail: {$user->email}\nMot de passe: {$password}", function ($message) use ($user) {
-                    $message->to($user->email)->subject('Création de votre compte');
-                });
+                try {
+                    Mail::raw("Bienvenue {$user->prenom}, vos identifiants de connexion sont :\nEmail: {$user->email}\nMot de passe: {$password}", function ($message) use ($user) {
+                        $message->to($user->email)->subject('Création de votre compte');
+                    });
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to send welcome email', [
+                        'user_id' => $user->id,
+                        'email' => $user->email,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue without failing the account creation
+                }
             }
 
             if (! empty($user->telephone)) {
@@ -81,7 +90,12 @@ class AccountService
                     $service = app()->make(\App\Services\MessageServiceInterface::class);
                     $service->sendMessage($user->telephone, "Bienvenue {$user->prenom}, vos identifiants sont Email: {$user->email} Mot de passe: {$password}");
                 } catch (\Throwable $e) {
-                    Log::info("SMS fallback for {$user->telephone}: Bienvenue {$user->prenom}, vos identifiants sont Email: {$user->email} Mot de passe: {$password}");
+                    Log::warning('Failed to send welcome SMS', [
+                        'user_id' => $user->id,
+                        'telephone' => $user->telephone,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue without failing the account creation
                 }
             }
 

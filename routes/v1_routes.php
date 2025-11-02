@@ -58,6 +58,11 @@ Route::middleware('cors')->group(function () {
 
     Route::get('comptes/{numeroCompte}', [CompteController::class, 'showByNumero'])->middleware(['auth:api', \App\Http\Middleware\AccountAccessMiddleware::class]);
 
+    // Account-specific transaction features
+    Route::get('comptes/{compteId}/transactions', [\App\Http\Controllers\Api\V1\CompteController::class, 'getTransactions'])->middleware('auth:api');
+    Route::get('comptes/{compteId}/statistics', [\App\Http\Controllers\Api\V1\CompteController::class, 'getStatistics'])->middleware('auth:api');
+    Route::get('comptes/{compteId}/dashboard', [\App\Http\Controllers\Api\V1\CompteController::class, 'getDashboard'])->middleware('auth:api');
+
     // Transactions module
     Route::get('transactions', [\App\Http\Controllers\Api\V1\TransactionController::class, 'index'])->middleware('auth:api');
     Route::get('transactions/{id}', [\App\Http\Controllers\Api\V1\TransactionController::class, 'show'])->middleware('auth:api');

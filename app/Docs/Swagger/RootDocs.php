@@ -24,6 +24,7 @@ namespace App\Docs\Swagger;
  * )
  *
  * @OA\Tag(name="Diag", description="Diagnostic endpoints")
+ * @OA\Tag(name="Dashboard", description="Dashboard endpoints")
  */
 
 /**

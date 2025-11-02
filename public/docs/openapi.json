@@ -272,6 +272,80 @@
                         }
                     }
                 }
+            },
+
+            "/api/v1/comptes/{compteId}/transactions": {
+                "get": {
+                    "summary": "Lister les transactions d'un compte spécifique",
+                    "description": "Récupère toutes les transactions d'un compte spécifique appartenant à l'utilisateur connecté",
+                    "tags": ["Comptes"],
+                    "security": [{ "bearerAuth": [] }],
+                    "parameters": [
+                        { "name": "compteId", "in": "path", "required": true, "description": "ID du compte (UUID ou numero_compte)", "schema": { "type": "string" } },
+                        { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Numéro de page" },
+                        { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 }, "description": "Nombre d'éléments par page" }
+                    ],
+                    "responses": {
+                        "200": {
+                            "description": "Liste des transactions récupérée",
+                            "content": {
+                                "application/json": {
+                                    "schema": { "$ref": "#/components/schemas/TransactionsResponse" }
+                                }
+                            }
+                        },
+                        "403": { "description": "Accès refusé" },
+                        "404": { "description": "Compte introuvable" }
+                    }
+                }
+            },
+
+            "/api/v1/comptes/{compteId}/statistics": {
+                "get": {
+                    "summary": "Statistiques d'un compte spécifique",
+                    "description": "Récupère les statistiques détaillées d'un compte spécifique (dépôts totaux, retraits totaux, nombre de transactions, dernière transaction)",
+                    "tags": ["Comptes"],
+                    "security": [{ "bearerAuth": [] }],
+                    "parameters": [
+                        { "name": "compteId", "in": "path", "required": true, "description": "ID du compte (UUID ou numero_compte)", "schema": { "type": "string" } }
+                    ],
+                    "responses": {
+                        "200": {
+                            "description": "Statistiques du compte récupérées",
+                            "content": {
+                                "application/json": {
+                                    "schema": { "$ref": "#/components/schemas/AccountStatisticsResponse" }
+                                }
+                            }
+                        },
+                        "403": { "description": "Accès refusé" },
+                        "404": { "description": "Compte introuvable" }
+                    }
+                }
+            },
+
+            "/api/v1/comptes/{compteId}/dashboard": {
+                "get": {
+                    "summary": "Dashboard d'un compte spécifique",
+                    "description": "Récupère le dashboard complet d'un compte spécifique avec statistiques et dernières transactions",
+                    "tags": ["Comptes"],
+                    "security": [{ "bearerAuth": [] }],
+                    "parameters": [
+                        { "name": "compteId", "in": "path", "required": true, "description": "ID du compte (UUID ou numero_compte)", "schema": { "type": "string" } }
+                    ],
+                    "responses": {
+                        "200": {
+                            "description": "Dashboard du compte récupéré",
+                            "content": {
+                                "application/json": {
+                                    "schema": { "$ref": "#/components/schemas/AccountDashboardResponse" }
+                                }
+                            }
+                        },
+                        "403": { "description": "Accès refusé" },
+                        "404": { "description": "Compte introuvable" }
+                    }
+                }
             }
             ,
             "/api/v1/comptes/{identifiant}": {
@@ -438,13 +512,45 @@
                 }
             },
 
-            "/api/v1/comptes/{compteId}/transactions": {
+
+            "/api/v1/dashboard": {
                 "get": {
-                    "summary": "Lister les transactions d'un compte",
-                    "tags": ["Transactions"],
+                    "summary": "Get global dashboard data (Admin only)",
+                    "description": "Retrieve global dashboard statistics including total deposits, withdrawals, transaction count, accounts, and recent data. Requires admin privileges.",
+                    "tags": ["Dashboard"],
                     "security": [{ "bearerAuth": [] }],
-                    "parameters": [ { "name": "compteId", "in": "path", "required": true, "schema": { "type": "string" } } ],
-                    "responses": { "200": { "description": "Transactions du compte", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TransactionsResponse" } } } } }
+                    "responses": {
+                        "200": {
+                            "description": "Global dashboard data retrieved successfully",
+                            "content": {
+                                "application/json": {
+                                    "schema": { "$ref": "#/components/schemas/DashboardGlobalResponse" }
+                                }
+                            }
+                        },
+                        "403": { "description": "Unauthorized - Admin access required" },
+                        "401": { "description": "Unauthenticated" }
+                    }
+                }
+            },
+
+            "/api/v1/dashboard/me": {
+                "get": {
+                    "summary": "Get personal dashboard data",
+                    "description": "Retrieve personal dashboard data for the authenticated user including their transaction totals, balance, recent transactions, and accounts.",
+                    "tags": ["Dashboard"],
+                    "security": [{ "bearerAuth": [] }],
+                    "responses": {
+                        "200": {
+                            "description": "Personal dashboard data retrieved successfully",
+                            "content": {
+                                "application/json": {
+                                    "schema": { "$ref": "#/components/schemas/DashboardPersonalResponse" }
+                                }
+                            }
+                        },
+                        "401": { "description": "Unauthenticated" }
+                    }
                 }
             }
         },
@@ -468,6 +574,10 @@
                 {
                     "name": "Transactions",
                     "description": "Opérations sur les transactions"
+                },
+                {
+                    "name": "Dashboard",
+                    "description": "Dashboard endpoints"
                 }
             ],
             "schemas": {
@@ -691,6 +801,92 @@
                         "montant": { "type": "number", "minimum": 0 },
                         "description": { "type": "string" },
                         "compte_id": { "type": "string" }
+                    }
+                },
+
+                "AccountStatisticsResponse": {
+                    "type": "object",
+                    "properties": {
+                        "success": { "type": "boolean", "example": true },
+                        "data": {
+                            "type": "object",
+                            "properties": {
+                                "compteId": { "type": "string", "format": "uuid" },
+                                "numeroCompte": { "type": "string" },
+                                "totalDepot": { "type": "number", "format": "float", "description": "Total des dépôts" },
+                                "totalRetrait": { "type": "number", "format": "float", "description": "Total des retraits" },
+                                "count": { "type": "integer", "description": "Nombre total de transactions" },
+                                "lastTransaction": { "$ref": "#/components/schemas/Transaction", "nullable": true }
+                            }
+                        }
+                    }
+                },
+
+                "AccountDashboardResponse": {
+                    "type": "object",
+                    "properties": {
+                        "success": { "type": "boolean", "example": true },
+                        "data": {
+                            "type": "object",
+                            "properties": {
+                                "compte": { "$ref": "#/components/schemas/Compte" },
+                                "totalDepot": { "type": "number", "format": "float", "description": "Total des dépôts" },
+                                "totalRetrait": { "type": "number", "format": "float", "description": "Total des retraits" },
+                                "balance": { "type": "number", "format": "float", "description": "Solde actuel (totalDepot - totalRetrait)" },
+                                "count": { "type": "integer", "description": "Nombre total de transactions" },
+                                "latest10": {
+                                    "type": "array",
+                                    "items": { "$ref": "#/components/schemas/Transaction" },
+                                    "description": "Les 10 dernières transactions"
+                                }
+                            }
+                        }
+                    }
+                },
+
+                "DashboardGlobalResponse": {
+                    "type": "object",
+                    "title": "Dashboard Global Response",
+                    "description": "Response for global dashboard data (admin only)",
+                    "properties": {
+                        "totalDepot": { "type": "number", "format": "float", "description": "Total amount of all deposit transactions" },
+                        "totalRetrait": { "type": "number", "format": "float", "description": "Total amount of all withdrawal transactions" },
+                        "count": { "type": "integer", "description": "Total number of transactions" },
+                        "last": { "$ref": "#/components/schemas/Transaction", "description": "Last transaction" },
+                        "totalComptes": { "type": "integer", "description": "Total number of accounts" },
+                        "soldeGlobal": { "type": "number", "format": "float", "description": "Global balance (totalDepot - totalRetrait)" },
+                        "latest10": {
+                            "type": "array",
+                            "items": { "$ref": "#/components/schemas/Transaction" },
+                            "description": "Last 10 transactions"
+                        },
+                        "comptesToday": {
+                            "type": "array",
+                            "items": { "$ref": "#/components/schemas/Compte" },
+                            "description": "Accounts created today"
+                        }
+                    }
+                },
+
+                "DashboardPersonalResponse": {
+                    "type": "object",
+                    "title": "Dashboard Personal Response",
+                    "description": "Response for personal dashboard data",
+                    "properties": {
+                        "totalDepot": { "type": "number", "format": "float", "description": "Total deposits for user's accounts" },
+                        "totalRetrait": { "type": "number", "format": "float", "description": "Total withdrawals for user's accounts" },
+                        "count": { "type": "integer", "description": "Number of transactions for user's accounts" },
+                        "balance": { "type": "number", "format": "float", "description": "User's balance (totalDepot - totalRetrait)" },
+                        "latest10": {
+                            "type": "array",
+                            "items": { "$ref": "#/components/schemas/Transaction" },
+                            "description": "Last 10 transactions for user's accounts"
+                        },
+                        "comptes": {
+                            "type": "array",
+                            "items": { "$ref": "#/components/schemas/Compte" },
+                            "description": "User's accounts"
+                        }
                     }
                 }
             }

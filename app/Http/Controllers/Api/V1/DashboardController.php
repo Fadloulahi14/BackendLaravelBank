@@ -4,19 +4,32 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Services\TransactionService;
+use App\Services\DashboardService;
 
 class DashboardController extends Controller
 {
     protected $service;
 
-    public function __construct(TransactionService $service)
+    public function __construct(DashboardService $service)
     {
         $this->service = $service;
     }
 
     /**
-     * @OA\Get(path="/api/v1/dashboard", tags={"Dashboard"}, security={{"bearerAuth":{}}}, @OA\Response(response=200, description="OK"))
+     * @OA\Get(
+     *     path="/api/v1/dashboard",
+     *     tags={"Dashboard"},
+     *     summary="Get global dashboard data (Admin only)",
+     *     description="Retrieve global dashboard statistics including total deposits, withdrawals, transaction count, accounts, and recent data. Requires admin privileges.",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Global dashboard data retrieved successfully",
+     *         @OA\JsonContent(ref="#/components/schemas/DashboardGlobalResponse")
+     *     ),
+     *     @OA\Response(response=403, description="Unauthorized - Admin access required"),
+     *     @OA\Response(response=401, description="Unauthenticated")
+     * )
      */
     public function global(Request $request)
     {
@@ -30,7 +43,19 @@ class DashboardController extends Controller
     }
 
     /**
-     * @OA\Get(path="/api/v1/dashboard/me", tags={"Dashboard"}, security={{"bearerAuth":{}}}, @OA\Response(response=200, description="OK"))
+     * @OA\Get(
+     *     path="/api/v1/dashboard/me",
+     *     tags={"Dashboard"},
+     *     summary="Get personal dashboard data",
+     *     description="Retrieve personal dashboard data for the authenticated user including their transaction totals, balance, recent transactions, and accounts.",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Personal dashboard data retrieved successfully",
+     *         @OA\JsonContent(ref="#/components/schemas/DashboardPersonalResponse")
+     *     ),
+     *     @OA\Response(response=401, description="Unauthenticated")
+     * )
      */
     public function me(Request $request)
     {
